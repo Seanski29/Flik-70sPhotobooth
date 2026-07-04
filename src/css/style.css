@@ -1,25 +1,19 @@
-/* ==========================================================================
-   FLIK OPERATOR DASHBOARD - MASTER STYLESHEET
-   Est. 2026 - 70s Analog Photobooth System
-   ========================================================================== */
-
-/* --- 1. GLOBAL VARIABLES & THEME --- */
+/* src/css/style.css */
 :root {
-    /* Main Color Palette */
-    --bg-beige: #EBE1D1;
-    --sidebar-brown: #8B5A00;
-    --card-brown: #A06800;
-    --text-brown: #6B4400;
-    --text-light: #FCEFD9;
-    --flik-red: #FF4040;
-    --flik-red-hover: #ff5757;
+    --bg-beige: #E6DACA;
+    --dark-brown: #7B4B18;
+    --text-dark: #4A2E0B;
+    --text-light: #F4EBE0;
+    --flik-red: #FA3E3E;
+    --flik-red-hover: #D82D2D;
     
-    /* Typography */
-    --font-sans: 'Inter', sans-serif;
-    --font-serif: 'Rye', serif;
+    --border-hard: 2px solid var(--text-dark);
+    --shadow-retro: 4px 4px 0px rgba(74, 46, 11, 0.15);
+    
+    --font-ui: 'Inter', sans-serif;
+    --font-brand: 'Rye', serif;
 }
 
-/* --- 2. RESETS & BASE STYLES --- */
 * {
     margin: 0;
     padding: 0;
@@ -27,283 +21,343 @@
 }
 
 body {
-    display: flex;
-    height: 100vh;
-    font-family: var(--font-sans);
+    font-family: var(--font-ui);
     background-color: var(--bg-beige);
-    color: var(--text-brown);
-    overflow: hidden; /* Prevents unwanted scrolling on desktop app */
+    color: var(--text-dark);
+    overflow: hidden; 
 }
 
-/* --- 3. LOGIN PAGE SPECIFICS --- */
-.login-body {
+/* --- LOGIN PAGE --- */
+.auth-layout {
+    display: flex;
     justify-content: center;
     align-items: center;
-    
-    /* 70s Grid Background Pattern */
-    background-image: linear-gradient(rgba(139, 90, 0, 0.1) 1px, transparent 1px),
-                      linear-gradient(90deg, rgba(139, 90, 0, 0.1) 1px, transparent 1px);
-    background-size: 40px 40px;
+    height: 100vh;
+    background-image: linear-gradient(rgba(123, 75, 24, 0.05) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(123, 75, 24, 0.05) 1px, transparent 1px);
+    background-size: 30px 30px;
 }
 
-.login-container {
-    background-color: var(--sidebar-brown);
-    width: 500px;
-    border-radius: 20px;
-    padding: 50px 40px 20px 40px;
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+.auth-panel {
+    background-color: var(--dark-brown);
+    width: 450px;
+    padding: 50px 40px;
+    border-radius: 16px;
+    border: var(--border-hard);
+    box-shadow: 8px 8px 0px rgba(74, 46, 11, 0.2);
 }
 
-.login-header {
+.brand-header {
     text-align: center;
     margin-bottom: 40px;
 }
 
-.logo-image {
-    max-width: 100%;
-    height: auto;
-    max-height: 90px;
-    margin-bottom: 15px;
-    display: block;
+.brand-text-login {
+    font-family: var(--font-brand);
+    color: var(--bg-beige);
+    font-size: 4rem;
+    letter-spacing: 6px;
+    -webkit-text-stroke: 1px var(--flik-red);
+    margin-bottom: 5px;
 }
 
-.login-subtitle {
+.sys-version {
     color: var(--text-light);
-    font-size: 1.8rem;
-    font-weight: 400;
+    font-size: 1.2rem;
+    font-weight: 300;
 }
 
-#login-form {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 25px;
-    margin-bottom: 40px;
-}
-
-.input-group {
+.form-control {
+    margin-bottom: 25px;
     display: flex;
     align-items: center;
     justify-content: space-between;
 }
 
-.input-group label {
+.form-control label {
+    font-size: 1.1rem;
     color: var(--text-light);
-    font-size: 1.3rem;
     width: 35%;
 }
 
-.input-group input {
+.form-control input {
     width: 60%;
     padding: 12px;
-    border-radius: 20px;
-    border: none;
     background-color: var(--bg-beige);
-    font-size: 1.2rem;
-    color: var(--sidebar-brown);
+    border: 2px solid transparent;
+    border-radius: 20px;
+    color: var(--text-dark);
+    font-size: 1rem;
     outline: none;
-    transition: box-shadow 0.2s;
+    transition: all 0.2s;
 }
 
-.input-group input:focus {
-    box-shadow: 0 0 0 3px rgba(255, 64, 64, 0.5);
+.form-control input:focus {
+    border: 2px solid var(--flik-red);
 }
 
-/* Tactile Mechanical Login Button */
-.login-btn {
+.btn-primary {
     width: 100%;
-    padding: 16px;
-    margin-top: 20px;
-    border-radius: 30px;
-    border: 3px solid var(--text-light);
+    padding: 15px;
     background-color: var(--flik-red);
     color: var(--text-light);
-    font-family: var(--font-sans);
-    font-size: 1.25rem;
+    border: 2px solid var(--text-light);
+    border-radius: 30px;
+    font-size: 1.2rem;
     font-weight: 600;
-    letter-spacing: 1px;
-    text-transform: uppercase;
     cursor: pointer;
-    box-shadow: 0px 5px 0px var(--text-light);
-    transition: all 0.1s ease-in-out;
-    position: relative;
+    box-shadow: 0 4px 0px var(--text-light);
+    transition: all 0.1s;
+    margin-top: 20px;
 }
 
-.login-btn:hover {
-    background-color: var(--flik-red-hover);
-}
-
-.login-btn:active {
+.btn-primary:active {
     transform: translateY(4px);
-    box-shadow: 0px 1px 0px var(--text-light);
+    box-shadow: 0 0px 0px var(--text-light);
 }
 
-.login-footer {
-    width: 100%;
+.auth-footer {
+    margin-top: 30px;
     text-align: center;
     color: var(--text-light);
-    margin-top: auto;
+    border-top: 1px solid rgba(244, 235, 224, 0.2);
+    padding-top: 15px;
 }
 
-.footer-line {
-    border: none;
-    border-top: 1px solid rgba(252, 239, 217, 0.3);
-    margin-bottom: 10px;
+/* --- APP DASHBOARD --- */
+.app-layout {
+    display: flex;
+    height: 100vh;
 }
 
-/* --- 4. SIDEBAR NAVIGATION --- */
-.sidebar {
+#sidebar-container {
+    height: 100vh;
+    display: flex;
+}
+
+/* Update your existing sidebar class to fill 100% of that container */
+.sys-sidebar {
     width: 250px;
-    background-color: var(--sidebar-brown);
+    height: 100%; /* <-- Add this line */
+    background-color: var(--dark-brown);
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    padding: 30px 0;
-    box-shadow: 4px 0px 15px rgba(0,0,0,0.1);
+    border-right: var(--border-hard);
+    box-shadow: 4px 0px 0px rgba(74, 46, 11, 0.1);
     z-index: 10;
 }
 
-.sidebar .logo {
-    font-family: var(--font-serif);
-    font-size: 2.8rem;
-    color: var(--flik-red);
+.sidebar-brand {
+    padding: 30px 0;
     text-align: center;
-    margin-bottom: 40px;
-    letter-spacing: 5px;
-    text-shadow: 2px 2px 0px rgba(0,0,0,0.3);
-    /* Outline effect for plain text logo fallback */
-    -webkit-text-stroke: 1px var(--text-light); 
 }
 
-.nav-links {
-    list-style: none;
+.brand-text {
+    font-family: var(--font-brand);
+    color: var(--flik-red);
+    font-size: 2.8rem;
+    letter-spacing: 4px;
+    -webkit-text-stroke: 1px var(--text-light);
+}
+
+.sidebar-nav {
     flex-grow: 1;
+    padding: 20px 0;
 }
 
-.nav-links li {
-    padding: 15px 30px;
-    transition: background 0.3s;
-    border-left: 4px solid transparent; /* Ready for active state indicator */
+.sidebar-nav ul {
+    list-style: none;
 }
 
-.nav-links li:hover, .nav-links li.active {
-    background-color: rgba(255, 255, 255, 0.1);
-    border-left: 4px solid var(--flik-red);
-}
-
-.nav-links a {
-    color: var(--bg-beige);
-    text-decoration: none;
-    font-size: 1.2rem;
+.sidebar-nav a {
     display: flex;
     align-items: center;
-    gap: 15px;
+    padding: 15px 30px;
+    color: var(--text-light);
+    text-decoration: none;
+    font-size: 1.1rem;
+    border-left: 4px solid transparent;
+    transition: background 0.2s;
 }
 
-.exit-btn {
+.nav-icon {
+    font-size: 1.5rem;
+    margin-right: 15px;
+    color: var(--bg-beige);
+}
+
+.sidebar-nav a:hover {
+    background-color: rgba(244, 235, 224, 0.1);
+}
+
+.sidebar-nav li.active a {
+    border-left-color: var(--flik-red);
+    background-color: rgba(244, 235, 224, 0.15);
+    font-weight: 600;
+}
+
+.sidebar-footer {
     padding: 20px 30px;
 }
 
-.exit-btn a {
-    color: var(--bg-beige);
+.btn-logout {
+    color: var(--text-light);
     text-decoration: none;
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     display: flex;
     align-items: center;
-    gap: 10px;
-    transition: color 0.2s;
 }
 
-.exit-btn a:hover {
+.btn-logout:hover {
     color: var(--flik-red);
 }
 
-/* --- 5. MAIN CONTENT AREA (DASHBOARD) --- */
-.content-area {
+/* Workspace */
+.workspace {
     flex-grow: 1;
+    padding: 40px 60px;
     display: flex;
     flex-direction: column;
-    padding: 30px 50px;
-    background-color: var(--bg-beige);
     overflow-y: auto;
 }
 
-.top-bar {
+.workspace-header {
+    margin-bottom: 40px;
+    border-bottom: 2px solid var(--dark-brown);
+    padding-bottom: 20px;
     display: flex;
-    justify-content: flex-start;
-    margin-bottom: 20px;
+    justify-content: space-between;
+    align-items: flex-end;
 }
 
-.menu-icon {
-    font-size: 2.5rem;
-    color: var(--sidebar-brown);
-    cursor: pointer;
+.page-title {
+    font-family: var(--font-brand);
+    color: var(--flik-red);
+    font-size: 3.5rem;
+    letter-spacing: 3px;
+    margin-bottom: 5px;
+}
+
+.page-subtitle {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: var(--dark-brown);
+}
+
+/* Cards */
+.grid-dashboard {
+    display: flex;
+    gap: 30px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.dash-card {
+    background-color: transparent;
+    border: var(--border-hard);
+    border-radius: 12px;
+    padding: 30px;
+    width: 260px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    text-decoration: none;
+    color: var(--dark-brown);
+    box-shadow: var(--shadow-retro);
+    transition: transform 0.1s, box-shadow 0.1s;
+    background-color: var(--bg-beige);
+}
+
+.dash-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 6px 8px 0px rgba(74, 46, 11, 0.15);
+}
+
+.card-icon {
+    font-size: 4rem;
+    margin-bottom: 15px;
+}
+
+.dash-card h3 {
+    font-size: 1.5rem;
+    margin-bottom: 5px;
+}
+
+/* Standard Panels for Settings/Status */
+.panel {
+    background-color: var(--bg-beige);
+    border: var(--border-hard);
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: var(--shadow-retro);
+    margin-bottom: 30px;
+}
+
+.status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 0;
+    border-bottom: 1px solid rgba(123, 75, 24, 0.2);
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.indicator {
+    padding: 5px 15px;
+    border-radius: 20px;
+    border: 2px solid var(--text-dark);
+    font-size: 0.9rem;
+}
+.ind-green { background-color: #4CAF50; color: white; }
+.ind-red { background-color: var(--flik-red); color: white; }
+
+.terminal {
+    background-color: var(--text-dark);
+    color: #00FF00;
+    font-family: monospace;
+    padding: 20px;
+    height: 300px;
+    border-radius: 8px;
+    overflow-y: scroll;
+    border: 4px solid var(--dark-brown);
+}
+
+/* Sidebar SVG Icons */
+.nav-icon-svg {
+    width: 22px;
+    height: 22px;
+    margin-right: 15px;
+    stroke: currentColor;
     transition: transform 0.2s;
 }
 
-.menu-icon:hover {
+.sidebar-nav a:hover .nav-icon-svg {
     transform: scale(1.1);
 }
 
-/* Dashboard Home Layout */
-.dashboard-home {
+.sidebar-nav li.active .nav-icon-svg {
+    stroke: var(--flik-red);
+}
+
+/* Dashboard Card SVG Icons */
+.card-icon {
+    margin-bottom: 15px;
     display: flex;
-    flex-direction: column;
+    justify-content: center;
     align-items: center;
-    justify-content: center;
-    flex-grow: 1;
 }
 
-.main-title {
-    font-family: var(--font-serif);
-    font-size: 7rem;
-    color: var(--flik-red);
-    letter-spacing: 12px;
-    margin-bottom: 10px;
-    text-shadow: 4px 4px 0px rgba(0,0,0,0.1);
+.card-icon svg {
+    width: 64px;
+    height: 64px;
+    stroke: var(--dark-brown);
+    transition: stroke 0.2s, transform 0.2s;
 }
 
-.subtitle {
-    font-size: 3rem;
-    font-weight: 600;
-    color: var(--sidebar-brown);
-    margin-bottom: 60px;
-    letter-spacing: -1px;
-}
-
-/* Quick Routes Grid */
-.quick-routes {
-    display: flex;
-    gap: 40px;
-    flex-wrap: wrap;
-    justify-content: center;
-}
-
-.route-card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 15px;
-    cursor: pointer;
-    transition: transform 0.2s ease, filter 0.2s;
-}
-
-.route-card:hover {
-    transform: translateY(-8px);
-    filter: drop-shadow(0px 10px 8px rgba(139, 90, 0, 0.2));
-}
-
-.icon-placeholder {
-    font-size: 5rem;
-    color: var(--sidebar-brown);
-}
-
-.route-card h3 {
-    font-size: 1.8rem;
-    font-weight: 600;
-    color: var(--sidebar-brown);
+.dash-card:hover .card-icon svg {
+    stroke: var(--flik-red);
+    transform: scale(1.05);
 }

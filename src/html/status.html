@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>FLIK - Status</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Rye&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body class="app-layout">
+    <div id="sidebar-container"></div>
+    <main class="workspace">
+        <header class="workspace-header">
+            <div>
+                <h2 class="page-title">Status</h2>
+                <p class="page-subtitle">Hardware Connections</p>
+            </div>
+        </header>
+        <section class="panel">
+            <div class="status-row">
+                <span>Arduino Mega (COM3)</span>
+                <span class="indicator ind-green">CONNECTED</span>
+            </div>
+            <div class="status-row">
+                <span>DSLR Camera (USB)</span>
+                <span class="indicator ind-green">READY</span>
+            </div>
+            <div class="status-row">
+                <span>Thermal Printer</span>
+                <span class="indicator ind-red">PAPER LOW</span>
+            </div>
+            <div class="status-row">
+                <span>Bill Acceptor (Pulse)</span>
+                <span class="indicator ind-green">ACTIVE</span>
+            </div>
+        </section>
+    </main>
+    <script src="../js/sidebar.js"></script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>FLIK - Settings</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Rye&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body class="app-layout">
+    <div id="sidebar-container"></div>
+    <main class="workspace">
+        <header class="workspace-header">
+            <div>
+                <h2 class="page-title">Settings</h2>
+                <p class="page-subtitle">Booth Configurations</p>
+            </div>
+        </header>
+        <section class="panel">
+            <div class="form-control">
+                <label style="color: var(--text-dark); font-weight: 600;">Countdown Timer (Sec):</label>
+                <input type="number" value="5" style="border: var(--border-hard);">
+            </div>
+            <div class="form-control">
+                <label style="color: var(--text-dark); font-weight: 600;">Pulses per Session (Credits):</label>
+                <input type="number" value="5" style="border: var(--border-hard);">
+            </div>
+            <button class="btn-primary" style="width: 200px;">Save Config</button>
+        </section>
+    </main>
+    <script src="../js/sidebar.js"></script>
+</body>
+</html>
