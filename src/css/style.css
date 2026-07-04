@@ -1,0 +1,309 @@
+/* ==========================================================================
+   FLIK OPERATOR DASHBOARD - MASTER STYLESHEET
+   Est. 2026 - 70s Analog Photobooth System
+   ========================================================================== */
+
+/* --- 1. GLOBAL VARIABLES & THEME --- */
+:root {
+    /* Main Color Palette */
+    --bg-beige: #EBE1D1;
+    --sidebar-brown: #8B5A00;
+    --card-brown: #A06800;
+    --text-brown: #6B4400;
+    --text-light: #FCEFD9;
+    --flik-red: #FF4040;
+    --flik-red-hover: #ff5757;
+    
+    /* Typography */
+    --font-sans: 'Inter', sans-serif;
+    --font-serif: 'Rye', serif;
+}
+
+/* --- 2. RESETS & BASE STYLES --- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    display: flex;
+    height: 100vh;
+    font-family: var(--font-sans);
+    background-color: var(--bg-beige);
+    color: var(--text-brown);
+    overflow: hidden; /* Prevents unwanted scrolling on desktop app */
+}
+
+/* --- 3. LOGIN PAGE SPECIFICS --- */
+.login-body {
+    justify-content: center;
+    align-items: center;
+    
+    /* 70s Grid Background Pattern */
+    background-image: linear-gradient(rgba(139, 90, 0, 0.1) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(139, 90, 0, 0.1) 1px, transparent 1px);
+    background-size: 40px 40px;
+}
+
+.login-container {
+    background-color: var(--sidebar-brown);
+    width: 500px;
+    border-radius: 20px;
+    padding: 50px 40px 20px 40px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.logo-image {
+    max-width: 100%;
+    height: auto;
+    max-height: 90px;
+    margin-bottom: 15px;
+    display: block;
+}
+
+.login-subtitle {
+    color: var(--text-light);
+    font-size: 1.8rem;
+    font-weight: 400;
+}
+
+#login-form {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+    margin-bottom: 40px;
+}
+
+.input-group {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.input-group label {
+    color: var(--text-light);
+    font-size: 1.3rem;
+    width: 35%;
+}
+
+.input-group input {
+    width: 60%;
+    padding: 12px;
+    border-radius: 20px;
+    border: none;
+    background-color: var(--bg-beige);
+    font-size: 1.2rem;
+    color: var(--sidebar-brown);
+    outline: none;
+    transition: box-shadow 0.2s;
+}
+
+.input-group input:focus {
+    box-shadow: 0 0 0 3px rgba(255, 64, 64, 0.5);
+}
+
+/* Tactile Mechanical Login Button */
+.login-btn {
+    width: 100%;
+    padding: 16px;
+    margin-top: 20px;
+    border-radius: 30px;
+    border: 3px solid var(--text-light);
+    background-color: var(--flik-red);
+    color: var(--text-light);
+    font-family: var(--font-sans);
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 0px 5px 0px var(--text-light);
+    transition: all 0.1s ease-in-out;
+    position: relative;
+}
+
+.login-btn:hover {
+    background-color: var(--flik-red-hover);
+}
+
+.login-btn:active {
+    transform: translateY(4px);
+    box-shadow: 0px 1px 0px var(--text-light);
+}
+
+.login-footer {
+    width: 100%;
+    text-align: center;
+    color: var(--text-light);
+    margin-top: auto;
+}
+
+.footer-line {
+    border: none;
+    border-top: 1px solid rgba(252, 239, 217, 0.3);
+    margin-bottom: 10px;
+}
+
+/* --- 4. SIDEBAR NAVIGATION --- */
+.sidebar {
+    width: 250px;
+    background-color: var(--sidebar-brown);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 30px 0;
+    box-shadow: 4px 0px 15px rgba(0,0,0,0.1);
+    z-index: 10;
+}
+
+.sidebar .logo {
+    font-family: var(--font-serif);
+    font-size: 2.8rem;
+    color: var(--flik-red);
+    text-align: center;
+    margin-bottom: 40px;
+    letter-spacing: 5px;
+    text-shadow: 2px 2px 0px rgba(0,0,0,0.3);
+    /* Outline effect for plain text logo fallback */
+    -webkit-text-stroke: 1px var(--text-light); 
+}
+
+.nav-links {
+    list-style: none;
+    flex-grow: 1;
+}
+
+.nav-links li {
+    padding: 15px 30px;
+    transition: background 0.3s;
+    border-left: 4px solid transparent; /* Ready for active state indicator */
+}
+
+.nav-links li:hover, .nav-links li.active {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-left: 4px solid var(--flik-red);
+}
+
+.nav-links a {
+    color: var(--bg-beige);
+    text-decoration: none;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.exit-btn {
+    padding: 20px 30px;
+}
+
+.exit-btn a {
+    color: var(--bg-beige);
+    text-decoration: none;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: color 0.2s;
+}
+
+.exit-btn a:hover {
+    color: var(--flik-red);
+}
+
+/* --- 5. MAIN CONTENT AREA (DASHBOARD) --- */
+.content-area {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 30px 50px;
+    background-color: var(--bg-beige);
+    overflow-y: auto;
+}
+
+.top-bar {
+    display: flex;
+    justify-content: flex-start;
+    margin-bottom: 20px;
+}
+
+.menu-icon {
+    font-size: 2.5rem;
+    color: var(--sidebar-brown);
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.menu-icon:hover {
+    transform: scale(1.1);
+}
+
+/* Dashboard Home Layout */
+.dashboard-home {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex-grow: 1;
+}
+
+.main-title {
+    font-family: var(--font-serif);
+    font-size: 7rem;
+    color: var(--flik-red);
+    letter-spacing: 12px;
+    margin-bottom: 10px;
+    text-shadow: 4px 4px 0px rgba(0,0,0,0.1);
+}
+
+.subtitle {
+    font-size: 3rem;
+    font-weight: 600;
+    color: var(--sidebar-brown);
+    margin-bottom: 60px;
+    letter-spacing: -1px;
+}
+
+/* Quick Routes Grid */
+.quick-routes {
+    display: flex;
+    gap: 40px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.route-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    cursor: pointer;
+    transition: transform 0.2s ease, filter 0.2s;
+}
+
+.route-card:hover {
+    transform: translateY(-8px);
+    filter: drop-shadow(0px 10px 8px rgba(139, 90, 0, 0.2));
+}
+
+.icon-placeholder {
+    font-size: 5rem;
+    color: var(--sidebar-brown);
+}
+
+.route-card h3 {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: var(--sidebar-brown);
+}

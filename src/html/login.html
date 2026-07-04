@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FLIK - Login</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Rye&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body class="login-body">
+
+    <div class="login-container">
+        <div class="login-header">
+            <img src="../assets/flik-logo.png" alt="FLIK" class="logo-image">
+            <h2 class="login-subtitle">Log in</h2>
+        </div>
+
+        <form id="login-form">
+            <div class="input-group">
+                <label for="username">Username :</label>
+                <input type="text" id="username" autocomplete="off" required>
+            </div>
+            
+            <div class="input-group">
+                <label for="password">Password :</label>
+                <input type="password" id="password" required>
+            </div>
+            <a href="../html/page/index.html">  
+            <button type="submit" class="login-btn">Log In</button>
+            </a>  
+        </form>
+
+        <div class="login-footer">
+            <hr class="footer-line">
+            <p>Est. 2026</p>
+        </div>
+    </div>
+    <script src="../js/login.js"></script>
+    
+</html>

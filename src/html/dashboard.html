@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FLIK Operator Dashboard</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Rye&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <nav class="sidebar">
+        <div class="logo">FLIK</div>
+        <ul class="nav-links">
+            <li class="active"><a href="#" id="nav-home">Home</a></li>
+            <li><a href="#" id="nav-status">Status</a></li>
+            <li><a href="#" id="nav-control">Control</a></li>
+            <li><a href="#" id="nav-settings">Settings</a></li>
+            <li><a href="#" id="nav-diagnose">Diagnose</a></li>
+        </ul>
+        <div class="exit-btn">
+            <a href="#">Exit</a>
+        </div>
+    </nav>
+
+    <main class="content-area">
+        <header class="top-bar">
+            <div class="menu-icon">&#9776;</div> 
+        </header>
+
+        <section class="dashboard-home">
+            <h1 class="main-title">FLIK</h1>
+            <h2 class="subtitle">Quick Routes</h2>
+            
+            <div class="quick-routes">
+                <div class="route-card">
+                    <div class="icon-placeholder">🛡️</div>
+                    <h3>Status</h3>
+                </div>
+                <div class="route-card">
+                    <div class="icon-placeholder">⚙️</div>
+                    <h3>Settings</h3>
+                </div>
+                <div class="route-card">
+                    <div class="icon-placeholder">🎮</div>
+                    <h3>Controls</h3>
+                </div>
+                <div class="route-card">
+                    <div class="icon-placeholder">🔧</div>
+                    <h3>Diagnose</h3>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
