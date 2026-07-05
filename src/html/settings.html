@@ -4,29 +4,147 @@
     <meta charset="UTF-8">
     <title>FLIK - Settings</title>
     <link rel="stylesheet" href="../css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Rye&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rye&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body class="app-layout">
     <div id="sidebar-container"></div>
+    
     <main class="workspace">
         <header class="workspace-header">
             <div>
                 <h2 class="page-title">Settings</h2>
-                <p class="page-subtitle">Booth Configurations</p>
+                <p class="page-subtitle">System & Hardware Configuration</p>
+            </div>
+            <div>
+                <button class="btn-primary" style="margin-top: 0; padding: 10px 25px;">Save All Changes</button>
             </div>
         </header>
-        <section class="panel">
-            <div class="form-control">
-                <label style="color: var(--text-dark); font-weight: 600;">Countdown Timer (Sec):</label>
-                <input type="number" value="5" style="border: var(--border-hard);">
-            </div>
-            <div class="form-control">
-                <label style="color: var(--text-dark); font-weight: 600;">Pulses per Session (Credits):</label>
-                <input type="number" value="5" style="border: var(--border-hard);">
-            </div>
-            <button class="btn-primary" style="width: 200px;">Save Config</button>
-        </section>
+
+        <div class="controls-grid-layout">
+            
+            <section class="panel control-panel">
+                <h3 class="panel-heading"><span class="nav-icon">🪙</span> Pricing & Pulses</h3>
+                
+                <div class="form-control">
+                    <label style="color: var(--text-dark); font-weight: 600; width: 60%;">Pulses Required per Session:</label>
+                    <input type="number" value="5" style="border: var(--border-hard); width: 35%;">
+                </div>
+                
+                <div class="form-control">
+                    <label style="color: var(--text-dark); font-weight: 600; width: 60%;">Bill Acceptor Multiplier (Pulse/PHP):</label>
+                    <input type="number" value="10" style="border: var(--border-hard); width: 35%;">
+                </div>
+
+                <div class="toggle-row">
+                    <span>Accept Coins</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </section>
+
+            <section class="panel control-panel">
+                <h3 class="panel-heading"><span class="nav-icon">⏱️</span> Session Timings</h3>
+                
+                <div class="form-control">
+                    <label style="color: var(--text-dark); font-weight: 600; width: 60%;">Pre-Capture Countdown (Sec):</label>
+                    <input type="number" value="5" style="border: var(--border-hard); width: 35%;">
+                </div>
+                
+                <div class="form-control">
+                    <label style="color: var(--text-dark); font-weight: 600; width: 60%;">Interval Between Shots (Sec):</label>
+                    <input type="number" value="3" style="border: var(--border-hard); width: 35%;">
+                </div>
+
+                <div class="form-control">
+                    <label style="color: var(--text-dark); font-weight: 600; width: 60%;">Total Shots per Session:</label>
+                    <input type="number" value="4" style="border: var(--border-hard); width: 35%;">
+                </div>
+            </section>
+
+            <section class="panel control-panel">
+                <h3 class="panel-heading"><span class="nav-icon">🔄</span> Booth Workflow</h3>
+                
+                <div class="toggle-row">
+                    <span>Auto-Print After Session</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                
+                <div class="toggle-row">
+                    <span>Enable Audio Prompts</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="toggle-row">
+                    <span>Save Raw Image Files to SSD</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </section>
+
+            <section class="panel control-panel">
+                <h3 class="panel-heading"><span class="nav-icon">🔒</span> Security</h3>
+                
+                <div class="form-control">
+                    <label style="color: var(--text-dark); font-weight: 600; width: 60%;">Admin Override PIN:</label>
+                    <input type="password" value="1970" style="border: var(--border-hard); width: 35%;">
+                </div>
+
+                <div class="toggle-row">
+                    <span>Lock UI After 5 Mins Inactivity</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="toggle-row">
+                    <span>Require PIN for Manual Controls</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </section>
+
+            <section class="panel control-panel">
+                <h3 class="panel-heading"><span class="nav-icon">🎨</span> Image Filters & LUTs</h3>
+                
+                <div class="form-control">
+                    <label style="color: var(--text-dark); font-weight: 600; width: 60%;">Default Boot Filter:</label>
+                    <select style="border: var(--border-hard); width: 35%; padding: 12px; border-radius: 20px; background-color: var(--bg-beige); color: var(--text-dark); font-size: 1rem; outline: none; cursor: pointer;">
+                        <option value="sepia" selected>Vintage Sepia</option>
+                        <option value="bw">High-Contrast B&W</option>
+                        <option value="color">Standard Color</option>
+                    </select>
+                </div>
+
+                <div class="form-control">
+                    <label style="color: var(--text-dark); font-weight: 600; width: 60%;">Filter Intensity (%):</label>
+                    <input type="number" value="85" min="0" max="100" style="border: var(--border-hard); width: 35%;">
+                </div>
+
+                <div class="toggle-row">
+                    <span>Enable Physical Filter Toggle Switch</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </section>
+
+        </div>
     </main>
+
     <script src="../js/sidebar.js"></script>
 </body>
 </html>

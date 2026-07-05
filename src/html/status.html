@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>FLIK - Status</title>
     <link rel="stylesheet" href="../css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Rye&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rye&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body class="app-layout">
     <div id="sidebar-container"></div>
@@ -15,9 +15,19 @@
                 <p class="page-subtitle">Hardware Connections</p>
             </div>
         </header>
+
+        <div class="health-banner banner-warning">
+            <div class="banner-icon">⚠️</div>
+            <div class="banner-text">
+                <h3>SYSTEM STATUS: ATTENTION REQUIRED</h3>
+                <p>Thermal Printer media is running critically low. Replace spool soon.</p>
+            </div>
+        </div>
+
+        <h3 class="panel-heading">Hardware Nodes</h3>
         <section class="panel">
             <div class="status-row">
-                <span>Arduino Mega (COM3)</span>
+                <span>Arduino Mega 2560 (COM3)</span>
                 <span class="indicator ind-green">CONNECTED</span>
             </div>
             <div class="status-row">
@@ -25,14 +35,74 @@
                 <span class="indicator ind-green">READY</span>
             </div>
             <div class="status-row">
-                <span>Thermal Printer</span>
-                <span class="indicator ind-red">PAPER LOW</span>
+                <span>Thermal Printer (USB)</span>
+                <span class="indicator ind-yellow">PAPER LOW</span>
             </div>
             <div class="status-row">
-                <span>Bill Acceptor (Pulse)</span>
+                <span>Bill / Coin Validator (Pulse Input)</span>
                 <span class="indicator ind-green">ACTIVE</span>
             </div>
         </section>
+
+        <h3 class="panel-heading">Consumables & Infrastructure</h3>
+        <section class="panel">
+            <div class="resource-block">
+                <div class="resource-info">
+                    <span class="resource-name">Printer Media Spool</span>
+                    <span class="resource-value">12 / 150 Prints Remaining</span>
+                </div>
+                <div class="progress-bg">
+                    <div class="progress-fill fill-red" style="width: 8%;"></div>
+                </div>
+            </div>
+
+            <div class="resource-block">
+                <div class="resource-info">
+                    <span class="resource-name">Local Storage (SSD)</span>
+                    <span class="resource-value">42.5 GB Free</span>
+                </div>
+                <div class="progress-bg">
+                    <div class="progress-fill fill-green" style="width: 85%;"></div>
+                </div>
+            </div>
+
+            <div class="resource-block">
+                <div class="resource-info">
+                    <span class="resource-name">Cash Vault Capacity</span>
+                    <span class="resource-value">Est. 240 Bills</span>
+                </div>
+                <div class="progress-bg">
+                    <div class="progress-fill fill-yellow" style="width: 60%;"></div>
+                </div>
+            </div>
+
+            <div class="resource-block">
+                <div class="resource-info">
+                    <span class="resource-name">Camera Battery Level</span>
+                    <span class="resource-value">98% (AC Dummy Battery)</span>
+                </div>
+                <div class="progress-bg">
+                    <div class="progress-fill fill-green" style="width: 98%;"></div>
+                </div>
+            </div>
+        </section>
+
+        <h3 class="panel-heading">System Links & Integrity</h3>
+        <section class="panel">
+            <div class="status-row">
+                <span>COM Port Handshake Latency</span>
+                <span style="font-family: monospace; font-weight: 600;">2ms (0% Drop)</span>
+            </div>
+            <div class="status-row">
+                <span>IPC (Front-to-Back) Sync</span>
+                <span class="indicator ind-green">STABLE</span>
+            </div>
+            <div class="status-row">
+                <span>Camera Capture Utility Link</span>
+                <span class="indicator ind-green">LISTENING</span>
+            </div>
+        </section>
+
     </main>
     <script src="../js/sidebar.js"></script>
 </body>

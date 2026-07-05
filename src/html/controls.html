@@ -2,25 +2,89 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>FLIK - Controls</title>
+    <title>FLIK - Manual Control</title>
     <link rel="stylesheet" href="../css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Rye&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rye&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body class="app-layout">
     <div id="sidebar-container"></div>
+    
     <main class="workspace">
         <header class="workspace-header">
             <div>
-                <h2 class="page-title">Control</h2>
-                <p class="page-subtitle">Manual Overrides</p>
+                <h2 class="page-title">Manual Control</h2>
+                <p class="page-subtitle">Hardware Overrides & Testing</p>
             </div>
         </header>
-        <section class="panel" style="display: flex; gap: 20px;">
-            <button class="btn-primary" style="width: 250px;">Test Fire Camera</button>
-            <button class="btn-primary" style="width: 250px;">Test Print Spool</button>
-            <button class="btn-primary" style="width: 250px; background-color: var(--text-dark);">Reset System</button>
-        </section>
+
+        <div class="controls-grid-layout">
+            
+            <section class="panel control-panel">
+                <h3 class="panel-heading"><span class="nav-icon">📷</span> Capture & Output</h3>
+                <div class="control-group">
+                    <button class="btn-primary btn-outline">Test Fire Camera</button>
+                    <button class="btn-primary btn-outline">Spool Blank Print</button>
+                    <button class="btn-primary btn-outline">Cut Printer Media</button>
+                    <button class="btn-primary btn-outline">Trigger Audio Chime</button>
+                </div>
+            </section>
+
+            <section class="panel control-panel">
+                <h3 class="panel-heading"><span class="nav-icon">💡</span> Illumination & Relays</h3>
+                
+                <div class="toggle-row">
+                    <span>Main Flash Strobe</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="toggle-row">
+                    <span>White LED Strips (Fill)</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="toggle-row">
+                    <span>Ambient Light A (Red)</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="toggle-row">
+                    <span>Ambient Light B (Sepia)</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </section>
+
+            <section class="panel control-panel">
+                <h3 class="panel-heading"><span class="nav-icon">🔄</span> Sequence Simulation</h3>
+                <p style="color: var(--text-muted); margin-bottom: 15px; font-size: 0.9rem;">
+                    Run software sequences without triggering physical hardware or consuming credits.
+                </p>
+                <div class="control-group">
+                    <button class="btn-primary">Simulate Pulse (Coin/Bill)</button>
+                    <button class="btn-primary">Run Dummy Session</button>
+                    <button class="btn-primary">Test UI Countdown</button>
+                </div>
+            </section>
+
+            <section class="panel control-panel danger-zone">
+                <h3 class="panel-heading" style="color: var(--flik-red);"><span class="nav-icon">⚠️</span> System Override</h3>
+                <div class="control-group">
+                    <button class="btn-danger">Clear Active Session</button>
+                    <button class="btn-danger">Hard Reset Arduino</button>
+                </div>
+            </section>
+
+        </div>
     </main>
+
     <script src="../js/sidebar.js"></script>
 </body>
 </html>

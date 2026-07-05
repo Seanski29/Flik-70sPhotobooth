@@ -361,3 +361,333 @@ body {
     stroke: var(--flik-red);
     transform: scale(1.05);
 }
+
+/* --- STATUS PAGE SPECIFIC UI --- */
+
+/* Indicator Additions */
+.ind-yellow { background-color: #F5A623; color: white; border-color: #F5A623; }
+
+/* Panel Headings */
+.panel-heading {
+    font-size: 1.3rem;
+    color: var(--dark-brown);
+    margin: 20px 0 10px 0;
+    font-weight: 700;
+}
+
+/* Master Health Banner */
+.health-banner {
+    display: flex;
+    align-items: center;
+    padding: 20px 25px;
+    border-radius: 12px;
+    margin-bottom: 30px;
+    box-shadow: var(--shadow-retro);
+    border: var(--border-hard);
+}
+
+.banner-warning {
+    background-color: #FFF3E0;
+    border-color: #F5A623;
+}
+
+.banner-success {
+    background-color: #E8F5E9;
+    border-color: #4CAF50;
+}
+
+.banner-icon {
+    font-size: 2.5rem;
+    margin-right: 20px;
+}
+
+.banner-text h3 {
+    font-size: 1.2rem;
+    margin-bottom: 5px;
+    color: var(--text-dark);
+}
+
+.banner-text p {
+    font-size: 1rem;
+    color: var(--dark-brown);
+}
+
+/* Resource Progress Bars */
+.resource-block {
+    margin-bottom: 25px;
+}
+
+.resource-block:last-child {
+    margin-bottom: 0;
+}
+
+.resource-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.resource-value {
+    color: var(--dark-brown);
+    font-weight: 400;
+}
+
+.progress-bg {
+    width: 100%;
+    height: 12px;
+    background-color: rgba(123, 75, 24, 0.1);
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid rgba(74, 46, 11, 0.2);
+}
+
+.progress-fill {
+    height: 100%;
+    border-radius: 6px;
+    transition: width 0.5s ease;
+}
+
+.fill-green { background-color: #4CAF50; }
+.fill-yellow { background-color: #F5A623; }
+.fill-red { background-color: var(--flik-red); }
+
+/* --- CONTROLS PAGE SPECIFIC UI --- */
+
+/* Controls Grid Layout */
+.controls-grid-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Two columns */
+    gap: 30px;
+}
+
+.control-panel {
+    display: flex;
+    flex-direction: column;
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+/* Secondary / Outline Buttons */
+.btn-outline {
+    background-color: transparent;
+    border: 2px solid var(--text-muted);
+    color: var(--text-primary);
+    box-shadow: none;
+    margin-top: 0;
+}
+
+.btn-outline:hover {
+    border-color: var(--text-light);
+    color: var(--text-light);
+    background-color: rgba(244, 235, 224, 0.05);
+}
+
+.btn-outline:active {
+    transform: scale(0.98);
+}
+
+/* Danger Buttons */
+.btn-danger {
+    background-color: transparent;
+    border: 2px solid var(--flik-red);
+    color: var(--flik-red);
+    padding: 15px;
+    border-radius: 8px; /* Sharper corners for system actions */
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-danger:hover {
+    background-color: var(--flik-red);
+    color: var(--text-light);
+}
+
+/* Danger Zone Panel Outline */
+.danger-zone {
+    border-color: rgba(250, 62, 62, 0.3);
+}
+
+/* --- CUSTOM TOGGLE SWITCHES --- */
+.toggle-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(123, 75, 24, 0.2);
+    font-size: 1.1rem;
+    color: var(--text-primary);
+}
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 26px;
+}
+
+/* Hide default HTML checkbox */
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+/* The slider track */
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: var(--bg-base);
+    border: 2px solid var(--dark-brown);
+    transition: .3s;
+    border-radius: 26px;
+}
+
+/* The slider knob */
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 2px;
+    bottom: 2px;
+    background-color: var(--text-muted);
+    transition: .3s;
+    border-radius: 50%;
+}
+
+/* Checked State */
+.toggle-switch input:checked + .slider {
+    background-color: rgba(250, 62, 62, 0.1);
+    border-color: var(--flik-red);
+}
+
+.toggle-switch input:checked + .slider:before {
+    transform: translateX(24px);
+    background-color: var(--flik-red);
+    box-shadow: 0 0 10px rgba(250, 62, 62, 0.5);
+}
+
+/* --- LIVE FEED DASHBOARD --- */
+.dashboard-split {
+    display: flex;
+    gap: 30px;
+    height: 100%;
+}
+
+.feed-container {
+    flex: 2;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background-color: var(--bg-beige);
+}
+
+.feed-item {
+    padding: 12px 15px;
+    border-radius: 6px;
+    display: flex;
+    gap: 15px;
+    font-family: monospace;
+    font-size: 1.05rem;
+    border-left: 4px solid transparent;
+}
+
+.feed-time {
+    color: var(--text-muted);
+    min-width: 80px;
+}
+
+/* Feed Categories */
+.feed-sys { background-color: rgba(74, 46, 11, 0.05); border-left-color: var(--text-muted); }
+.feed-money { background-color: rgba(76, 175, 80, 0.1); border-left-color: #4CAF50; color: #2E7D32; font-weight: 600;}
+.feed-action { background-color: rgba(123, 75, 24, 0.08); border-left-color: var(--dark-brown); }
+.feed-timer { background-color: transparent; border-left-color: var(--flik-red); padding-top: 4px; padding-bottom: 4px;}
+
+.session-state-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.state-card {
+    text-align: center;
+    padding: 25px;
+}
+
+.state-card h3 {
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 15px;
+}
+
+.state-value {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.highlight-red { color: var(--flik-red); animation: pulse 2s infinite; }
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+}
+
+/* --- VAULT / STATS --- */
+.stat-block {
+    text-align: center;
+    padding: 30px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.transaction-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* --- ARCHIVE GRID --- */
+.archive-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 25px;
+}
+
+.archive-card {
+    padding: 15px;
+}
+
+.archive-placeholder {
+    background-color: var(--dark-brown);
+    color: var(--text-light);
+    height: 300px; /* Approximates a 2x6 photo strip ratio */
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    margin-bottom: 15px;
+    font-size: 0.9rem;
+}
+
+.archive-details {
+    font-size: 0.9rem;
+    color: var(--text-dark);
+}

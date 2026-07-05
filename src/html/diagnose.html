@@ -4,24 +4,72 @@
     <meta charset="UTF-8">
     <title>FLIK - Diagnose</title>
     <link rel="stylesheet" href="../css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Rye&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rye&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body class="app-layout">
     <div id="sidebar-container"></div>
+    
     <main class="workspace">
         <header class="workspace-header">
             <div>
                 <h2 class="page-title">Diagnose</h2>
-                <p class="page-subtitle">Serial Monitor Output</p>
+                <p class="page-subtitle">Hardware Troubleshooting & Logs</p>
+            </div>
+            <div>
+                <button class="btn-outline" style="padding: 10px 25px; margin-right: 10px;">Export Log (.txt)</button>
+                <button class="btn-danger" style="padding: 10px 25px;">Clear Terminal</button>
             </div>
         </header>
+
+        <div class="controls-grid-layout" style="margin-bottom: 30px;">
+            
+            <section class="panel control-panel">
+                <h3 class="panel-heading"><span class="nav-icon">📡</span> Ping & Handshakes</h3>
+                <p style="color: var(--text-muted); margin-bottom: 15px; font-size: 0.9rem;">
+                    Send targeted ping signals to verify component response times.
+                </p>
+                <div class="control-group">
+                    <button class="btn-primary">Ping Arduino (COM3)</button>
+                    <button class="btn-primary btn-outline">Check Camera USB Handshake</button>
+                    <button class="btn-primary btn-outline">Query Printer Spool Status</button>
+                    <button class="btn-primary btn-outline">Poll Bill Acceptor State</button>
+                </div>
+            </section>
+
+            <section class="panel control-panel">
+                <h3 class="panel-heading"><span class="nav-icon">🔬</span> Component Stress Tests</h3>
+                <p style="color: var(--text-muted); margin-bottom: 15px; font-size: 0.9rem;">
+                    Run automated loops to identify failing relays or hardware faults.
+                </p>
+                <div class="control-group">
+                    <button class="btn-primary">Run Full System P.O.S.T.</button>
+                    <button class="btn-primary btn-outline">Cycle All LED Relays (5x)</button>
+                    <button class="btn-primary btn-outline">Test Shutter Actuator (Rapid)</button>
+                    <button class="btn-primary btn-outline">Check Temp/Voltage Sensors</button>
+                </div>
+            </section>
+
+        </div>
+
+        <h3 class="panel-heading"><span class="nav-icon">🖥️</span> Live Serial Monitor (Baud: 115200)</h3>
         <div class="terminal">
-            > SYSTEM BOOT V1.0.4<br>
-            > ARDUINO CONNECTED ON COM3<br>
-            > AWAITING PULSE INPUT...<br>
-            > SWITCH STATE: SEPIA<br>
+            <span style="color: #8E8E9F;">[14:02:11]</span> SYSTEM INITIALIZATION STARTED...<br>
+            <span style="color: #8E8E9F;">[14:02:11]</span> ESTABLISHING IPC CONNECTION... SUCCESS<br>
+            <span style="color: #8E8E9F;">[14:02:12]</span> OPENING SERIAL PORT [COM3] @ 115200 BAUD...<br>
+            <span style="color: #4CAF50;">[14:02:13]</span> [RX] ARDUINO MEGA 2560 - FLIK FIRMWARE V1.4 ONLINE<br>
+            <span style="color: #8E8E9F;">[14:02:14]</span> [TX] CMD: QUERY_VALIDATOR_STATUS<br>
+            <span style="color: #4CAF50;">[14:02:14]</span> [RX] RES: VALIDATOR_AWAKE_AND_LISTENING<br>
+            <span style="color: #8E8E9F;">[14:02:15]</span> [TX] CMD: SYNC_TIMERS<br>
+            <span style="color: #4CAF50;">[14:02:15]</span> [RX] RES: TIMERS_SYNCED_OK<br>
+            <span style="color: #F5A623;">[14:15:33]</span> [RX] WARN: DSLR_AF_TIMEOUT_RETRYING<br>
+            <span style="color: #4CAF50;">[14:15:35]</span> [RX] RES: DSLR_AF_LOCKED_IMAGE_CAPTURED<br>
+            <span style="color: #E53935;">[14:42:10]</span> [RX] ERR: PRINTER_PAPER_JAM_DETECTED<br>
+            <span style="color: #8E8E9F;">[14:43:05]</span> [TX] CMD: PING_ARDUINO<br>
+            <span style="color: #4CAF50;">[14:43:05]</span> [RX] RES: PONG (4ms)<br>
+            <span style="color: #00FF00; animation: blink 1s infinite;">_</span>
         </div>
     </main>
+
     <script src="../js/sidebar.js"></script>
 </body>
 </html>

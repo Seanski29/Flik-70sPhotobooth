@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>FLIK - The Vault</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Rye&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="app-layout">
+    <div id="sidebar-container"></div>
+    
+    <main class="workspace">
+        <header class="workspace-header">
+            <div>
+                <h2 class="page-title">The Vault</h2>
+                <p class="page-subtitle">Financial Analytics & Cash Box Status</p>
+            </div>
+            <button class="btn-danger" style="padding: 10px 25px;">Empty Cash Box (Reset)</button>
+        </header>
+
+        <div class="controls-grid-layout" style="grid-template-columns: 1fr 1fr 1fr;">
+            <div class="panel stat-block">
+                <h3 style="color: var(--text-muted); margin-bottom: 10px;">Current Event Revenue</h3>
+                <div style="font-size: 3rem; font-weight: 700; color: var(--text-dark);">₱4,250</div>
+                <p style="color: #4CAF50; font-weight: 600;">+₱800 in last hour</p>
+            </div>
+            
+            <div class="panel stat-block">
+                <h3 style="color: var(--text-muted); margin-bottom: 10px;">Total Pulses Received</h3>
+                <div style="font-size: 3rem; font-weight: 700; color: var(--text-dark);">425</div>
+                <p style="color: var(--text-muted);">Est. 85 Sessions</p>
+            </div>
+
+            <div class="panel stat-block">
+                <h3 style="color: var(--text-muted); margin-bottom: 10px;">Physical Vault Capacity</h3>
+                <div style="font-size: 3rem; font-weight: 700; color: var(--flik-red);">85%</div>
+                <p style="color: var(--text-muted);">Approx. 340 bills stored</p>
+            </div>
+        </div>
+
+        <section class="panel" style="margin-top: 30px;">
+            <h3 class="panel-heading">Recent Transactions</h3>
+            <div class="transaction-list">
+                <div class="status-row"><span>19:45:12 - Bill Acceptor (Node 01)</span> <span style="font-weight:700;">+ ₱100</span></div>
+                <div class="status-row"><span>19:45:40 - Coin Acceptor (Node 02)</span> <span style="font-weight:700;">+ ₱25</span></div>
+                <div class="status-row"><span>19:32:05 - Bill Acceptor (Node 01)</span> <span style="font-weight:700;">+ ₱50</span></div>
+                <div class="status-row"><span>19:10:22 - Bill Acceptor (Node 01)</span> <span style="font-weight:700;">+ ₱100</span></div>
+            </div>
+        </section>
+    </main>
+
+    <script src="../js/sidebar.js"></script>
+</body>
+</html>

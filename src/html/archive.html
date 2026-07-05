@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>FLIK - Archive</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Rye&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="app-layout">
+    <div id="sidebar-container"></div>
+    
+    <main class="workspace">
+        <header class="workspace-header">
+            <div>
+                <h2 class="page-title">Archive</h2>
+                <p class="page-subtitle">Recent Sessions & Reprints</p>
+            </div>
+            <div>
+                <button class="btn-primary btn-outline" style="padding: 10px 25px; margin-right: 10px;">Export All to USB</button>
+                <button class="btn-danger" style="padding: 10px 25px;">Format SSD</button>
+            </div>
+        </header>
+
+        <div class="archive-grid">
+            <div class="archive-card panel">
+                <div class="archive-placeholder">IMG_0042.jpg<br>(Sepia LUT)</div>
+                <div class="archive-details">
+                    <p><strong>Session:</strong> #042</p>
+                    <p><strong>Time:</strong> 19:46</p>
+                </div>
+                <button class="btn-primary" style="width: 100%; padding: 10px; margin-top: 10px;">Force Reprint</button>
+            </div>
+
+            <div class="archive-card panel">
+                <div class="archive-placeholder">IMG_0041.jpg<br>(B&W LUT)</div>
+                <div class="archive-details">
+                    <p><strong>Session:</strong> #041</p>
+                    <p><strong>Time:</strong> 19:12</p>
+                </div>
+                <button class="btn-primary" style="width: 100%; padding: 10px; margin-top: 10px;">Force Reprint</button>
+            </div>
+
+            <div class="archive-card panel">
+                <div class="archive-placeholder">IMG_0040.jpg<br>(Color LUT)</div>
+                <div class="archive-details">
+                    <p><strong>Session:</strong> #040</p>
+                    <p><strong>Time:</strong> 18:55</p>
+                </div>
+                <button class="btn-primary" style="width: 100%; padding: 10px; margin-top: 10px;">Force Reprint</button>
+            </div>
+        </div>
+    </main>
+
+    <script src="../js/sidebar.js"></script>
+</body>
+</html>

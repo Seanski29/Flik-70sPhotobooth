@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Redirect the window to the dashboard page
                 // Adjust the path if your dashboard.html is named differently!
-                window.location.href = 'dashboard.html'; 
+                window.location.href = '../html/dashboard.html'; 
                 
             } else {
                 // If the credentials fail, alert the user and clear the password field
