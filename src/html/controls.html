@@ -5,10 +5,45 @@
     <title>FLIK - Manual Control</title>
     <link rel="stylesheet" href="../css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Rye&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* CSS for the Timer Overlay */
+        #timer-overlay {
+            display: none; /* Hidden by default */
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        #timer-text {
+            font-family: 'Inter', sans-serif;
+            font-size: 15rem;
+            font-weight: 700;
+            color: #ffffff;
+            margin: 0;
+            text-shadow: 0px 4px 20px rgba(255,255,255,0.3);
+        }
+        #timer-label {
+            font-family: 'Inter', sans-serif;
+            font-size: 2rem;
+            color: var(--flik-red, #ff4c4c);
+            margin-top: -20px;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+        }
+    </style>
 </head>
 <body class="app-layout">
     <div id="sidebar-container"></div>
     
+    <!-- Full Screen Timer Overlay -->
+    <div id="timer-overlay">
+        <h1 id="timer-text">5</h1>
+        <p id="timer-label">Get Ready</p>
+    </div>
+
     <main class="workspace">
         <header class="workspace-header">
             <div>
@@ -22,7 +57,10 @@
             <section class="panel control-panel">
                 <h3 class="panel-heading"><span class="nav-icon">📷</span> Capture & Output</h3>
                 <div class="control-group">
-                    <button class="btn-primary btn-outline">Test Fire Camera</button>
+                    <!-- Added ID here -->
+                    <button id="btn-fire-camera" class="btn-primary btn-outline">Test Fire Camera (Instant)</button>
+                    <!-- Added ID here -->
+                    <button id="btn-timer-camera" class="btn-primary btn-outline">Test Camera with Timer</button>
                     <button class="btn-primary btn-outline">Spool Blank Print</button>
                     <button class="btn-primary btn-outline">Cut Printer Media</button>
                     <button class="btn-primary btn-outline">Trigger Audio Chime</button>
@@ -86,5 +124,81 @@
     </main>
 
     <script src="../js/sidebar.js"></script>
+    
+    <!-- THE NEW HARDWARE BRIDGE LOGIC -->
+    <script>
+        // Get DOM Elements
+        const btnInstantFire = document.getElementById('btn-fire-camera');
+        const btnTimerFire = document.getElementById('btn-timer-camera');
+        const timerOverlay = document.getElementById('timer-overlay');
+        const timerText = document.getElementById('timer-text');
+        const timerLabel = document.getElementById('timer-label');
+
+        // 1. Instant Fire Button Event
+        btnInstantFire.addEventListener('click', () => {
+            console.log("Instant camera trigger clicked!");
+            sendCameraCommandToBackend();
+        });
+
+        // 2. Timer Fire Button Event
+        btnTimerFire.addEventListener('click', () => {
+            startPhotoboothCountdown(5); // Start a 5-second countdown
+        });
+
+        // 3. The Countdown Logic
+        function startPhotoboothCountdown(seconds) {
+            // Show the overlay
+            timerOverlay.style.display = 'flex';
+            let timeLeft = seconds;
+            timerText.innerText = timeLeft;
+            timerLabel.innerText = "Get Ready";
+
+            // Create an interval that ticks every 1000ms (1 second)
+            const countdownInterval = setInterval(() => {
+                timeLeft--;
+                
+                if (timeLeft > 0) {
+                    timerText.innerText = timeLeft;
+                } else {
+                    // Timer hit 0!
+                    clearInterval(countdownInterval);
+                    timerText.innerText = "📸";
+                    timerLabel.innerText = "SMILE!";
+                    
+                    // Trigger the physical camera via Node.js
+                    sendCameraCommandToBackend();
+
+                    // Hide the overlay after a 1.5-second delay
+                    setTimeout(() => {
+                        timerOverlay.style.display = 'none';
+                    }, 1500);
+                }
+            }, 1000);
+        }
+
+        // 4. The API Call to Node.js
+        async function sendCameraCommandToBackend() {
+            try {
+                // This makes a network request to your local Node.js server.
+                // Assuming Node.js is running a local server on port 3000
+                const response = await fetch('http://localhost:3000/api/capture', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    console.log("Success! Backend triggered the DSLR.");
+                } else {
+                    console.error("Backend received request but failed to fire camera.");
+                    alert("Camera Error: Check if DSLR is turned on and plugged in.");
+                }
+            } catch (error) {
+                console.error("Connection Error: Could not reach Node.js backend.", error);
+                alert("Connection Error: Is your Node.js backend server running?");
+            }
+        }
+    </script>
 </body>
 </html>

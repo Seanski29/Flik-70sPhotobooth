@@ -5,6 +5,68 @@
     <title>FLIK - Live Feed</title>
     <link rel="stylesheet" href="../css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Rye&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Camera & Filter Styles for the Mini-Preview */
+        #webcam-preview {
+            width: 100%;
+            min-height: 300px; /* Force it to stay open even if blank */
+            object-fit: cover;
+            border-radius: 8px;
+            background-color: #111; /* Gives you a dark box so you know it's there */
+            transform: scaleX(-1);
+            transition: filter 0.3s ease;
+            display: block;
+        }
+        .filter-color { filter: none; }
+        .filter-bw { filter: grayscale(100%); }
+        .filter-vintage { filter: sepia(80%) contrast(1.2) brightness(0.9); }
+
+        /* Strobe Effect for the Mini-Preview */
+        #flash-bang {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: white;
+            opacity: 0;
+            pointer-events: none;
+            border-radius: 8px;
+        }
+        .flash-active {
+            animation: strobe 0.5s ease-out forwards;
+        }
+        @keyframes strobe {
+            0% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        /* Auto-scroll the feed */
+        .feed-container {
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+                /* Final Result Display */
+        #result-modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+        #result-image {
+            max-height: 90vh;
+            border-radius: 10px;
+            box-shadow: 0px 10px 40px rgba(0,0,0,0.5);
+        }
+        .show-modal {
+            opacity: 1 !important;
+            pointer-events: auto !important;
+        }
+    </style>
 </head>
 <body class="app-layout">
     <div id="sidebar-container"></div>
@@ -16,68 +78,202 @@
                 <p class="page-subtitle">Real-time booth activity log</p>
             </div>
             <div class="operator-badge">
-                <span class="status-dot ind-green" style="display:inline-block; margin-right:8px;"></span> SYSTEM ARMED
+                <span id="connection-dot" class="status-dot ind-red" style="display:inline-block; margin-right:8px; background-color: red; border-radius: 50%; width: 10px; height: 10px;"></span> 
+                <span id="connection-text">CONNECTING...</span>
             </div>
         </header>
 
         <div class="dashboard-split">
-            <div class="feed-container panel">
-                <div class="feed-item feed-sys">
-                    <span class="feed-time">19:42:01</span>
-                    <span class="feed-msg">System Boot Complete. Arduino Synced.</span>
-                </div>
-                <div class="feed-item feed-money">
-                    <span class="feed-time">19:45:12</span>
-                    <span class="feed-msg">Bill inserted and accepted (₱100) - 10 Pulses Added</span>
-                </div>
-                <div class="feed-item feed-money">
-                    <span class="feed-time">19:45:40</span>
-                    <span class="feed-msg">5 Coins inserted and accepted (₱25) - 2.5 Pulses Added</span>
-                </div>
-                <div class="feed-item feed-action">
-                    <span class="feed-time">19:46:02</span>
-                    <span class="feed-msg">Consumer selecting filter: VINTAGE SEPIA</span>
-                </div>
-                <div class="feed-item feed-action">
-                    <span class="feed-time">19:46:15</span>
-                    <span class="feed-msg">Consumer started session.</span>
-                </div>
-                <div class="feed-item feed-timer">
-                    <span class="feed-time">19:46:15</span>
-                    <span class="feed-msg">Timer Started: 5...</span>
-                </div>
-                <div class="feed-item feed-timer">
-                    <span class="feed-time">19:46:16</span>
-                    <span class="feed-msg">4...</span>
-                </div>
-                <div class="feed-item feed-timer">
-                    <span class="feed-time">19:46:17</span>
-                    <span class="feed-msg">3...</span>
-                </div>
-                <div class="feed-item feed-action" style="font-weight: 700; color: var(--flik-red);">
-                    <span class="feed-time">19:46:20</span>
-                    <span class="feed-msg">📸 FLASH TRIGGERED - Photo 1/4 Captured</span>
-                </div>
+            <!-- Telemetry Feed -->
+            <div id="telemetry-feed" class="feed-container panel">
+                <!-- Javascript will inject logs here -->
             </div>
 
+            <!-- State Cards & Preview -->
             <div class="session-state-container">
+                
+                <!-- NEW: Mini Live Preview Card -->
+                <div class="panel state-card" style="padding: 10px; position: relative;">
+                <img id="webcam-preview" class="filter-color" src="http://localhost:5513" alt="Live Preview" autoplay muted>
+                    <div id="flash-bang"></div>
+                </img>
+                </div>
+
                 <div class="panel state-card">
                     <h3>Current State</h3>
-                    <div class="state-value highlight-red">CAPTURING</div>
-                </div>
-                <div class="panel state-card">
-                    <h3>Active Credits</h3>
-                    <div class="state-value">12.5 / 15</div>
-                    <p style="color:var(--text-muted); font-size: 0.85rem; margin-top:5px;">Req: 15 Pulses per session</p>
+                    <div id="current-state" class="state-value">IDLE</div>
                 </div>
                 <div class="panel state-card">
                     <h3>Selected Filter</h3>
-                    <div class="state-value">SEPIA LUT</div>
+                    <div id="active-filter" class="state-value">COLOR</div>
                 </div>
             </div>
         </div>
     </main>
-
+    <div id="result-modal">
+    <img id="result-image" src="" alt="Final Collage">
+</div>
     <script src="../js/sidebar.js"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    
+    <script>
+        // --- DOM Elements ---
+        const video = document.getElementById('webcam-preview');
+        const flashBang = document.getElementById('flash-bang');
+        const telemetryFeed = document.getElementById('telemetry-feed');
+        const stateDisplay = document.getElementById('current-state');
+        const filterDisplay = document.getElementById('active-filter');
+        const connDot = document.getElementById('connection-dot');
+        const connText = document.getElementById('connection-text');
+
+        let isSessionActive = false; 
+        // --- Force Live View Refresh ---
+        const liveView = document.getElementById('webcam-preview');
+
+        // This interval adds a unique timestamp to the end of the URL every 66 milliseconds (~15 frames per second).
+        // Because the URL changes slightly every time, the browser is forced to pull the newest frame.
+        setInterval(() => {
+            // Only update if we aren't currently taking a photo (to free up USB bandwidth)
+            if (!isSessionActive) {
+                liveView.src = `http://localhost:5513/liveview.jpg?t=${new Date().getTime()}`;
+            }
+        }, 66);
+
+        // --- 2. Telemetry Logger Function ---
+        function logTelemetry(message, type = 'feed-sys') {
+            const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+            const item = document.createElement('div');
+            item.className = `feed-item ${type}`;
+            
+            // Highlight actual photos in red like your mockup
+            if (message.includes("FLASH TRIGGERED")) {
+                item.style.fontWeight = "700";
+                item.style.color = "var(--flik-red, #ff4c4c)";
+            }
+
+            item.innerHTML = `<span class="feed-time">${time}</span> <span class="feed-msg">${message}</span>`;
+            telemetryFeed.appendChild(item);
+            telemetryFeed.scrollTop = telemetryFeed.scrollHeight; // Auto-scroll to bottom
+        }
+
+        // --- 3. Connect to Backend ---
+        const socket = io('http://localhost:3001');
+
+        socket.on('connect', () => {
+            connDot.style.backgroundColor = '#4ade80'; // Green
+            connText.innerText = "SYSTEM ARMED";
+            logTelemetry("Dashboard linked to Hardware Server.", "feed-sys");
+        });
+
+        socket.on('disconnect', () => {
+            connDot.style.backgroundColor = '#ff4c4c'; // Red
+            connText.innerText = "SERVER LOST";
+            logTelemetry("Connection to hardware server lost!", "feed-sys");
+        });
+
+        // --- 4. Listen for Hardware Events ---
+        socket.on('hardware_update', (data) => {
+            
+            // Handle Toggle Switch
+            if (data.type === 'filter' && !isSessionActive) {
+                video.classList.remove('filter-color', 'filter-bw', 'filter-vintage');
+                
+                let filterName = "COLOR";
+                if (data.value.includes('COLOR')) { video.classList.add('filter-color'); filterName = "COLOR"; }
+                if (data.value.includes('B&W')) { video.classList.add('filter-bw'); filterName = "B&W"; }
+                if (data.value.includes('VINTAGE')) { video.classList.add('filter-vintage'); filterName = "VINTAGE SEPIA"; }
+                
+                filterDisplay.innerText = filterName;
+                logTelemetry(`Consumer selected filter: ${filterName}`, "feed-action");
+            }
+
+            // Handle Arcade Button Trigger
+            if (data.type === 'trigger' && !isSessionActive) {
+                isSessionActive = true;
+                logTelemetry("Consumer started session.", "feed-action");
+                stateDisplay.innerText = "CAPTURING";
+                stateDisplay.classList.add('highlight-red');
+                startPhotoboothSequence();
+            }
+        });
+                const resultModal = document.getElementById('result-modal');
+        const resultImage = document.getElementById('result-image');
+
+        // Listen for the completed collage from the backend
+        socket.on('collage_ready', (imageUrl) => {
+            logTelemetry("✅ Collage processed! Displaying to user.", "feed-sys");
+            stateDisplay.innerText = "COMPLETE";
+            
+            // Set the image source to the newly created file
+            resultImage.src = imageUrl;
+            
+            // Show the modal
+            resultModal.classList.add('show-modal');
+
+            // Automatically hide the modal after 10 seconds and reset
+            setTimeout(() => {
+                resultModal.classList.remove('show-modal');
+                isSessionActive = false;
+                stateDisplay.innerText = "IDLE";
+                stateDisplay.classList.remove('highlight-red');
+                logTelemetry("System ready for next user.", "feed-sys");
+            }, 10000);
+        });
+        // --- 5. The 4-Shot Sequence ---
+        async function startPhotoboothSequence() {
+            const totalShots = 4;
+
+            for (let currentShot = 1; currentShot <= totalShots; currentShot++) {
+                // Run 5-second countdown
+                await runCountdown(5);
+
+                // FIRE!
+                logTelemetry(`📸 FLASH TRIGGERED - Photo ${currentShot}/${totalShots} Captured`, "feed-action");
+                triggerFlash();
+                socket.emit('fire_camera'); 
+                
+                if (currentShot < totalShots) {
+                    await sleep(2500); // Wait for DSLR to save before next countdown
+                }
+            }
+
+            logTelemetry("Session Complete. Processing media...", "feed-sys");
+            stateDisplay.innerText = "PROCESSING";
+            
+            // Reset after a few seconds
+            setTimeout(() => {
+                isSessionActive = false;
+                stateDisplay.innerText = "IDLE";
+                stateDisplay.classList.remove('highlight-red');
+                logTelemetry("System ready for next user.", "feed-sys");
+            }, 3000);
+        }
+
+        // --- Helpers ---
+        function runCountdown(seconds) {
+            return new Promise(resolve => {
+                let timeLeft = seconds;
+                logTelemetry(`Timer Started: ${timeLeft}...`, "feed-timer");
+                
+                const interval = setInterval(() => {
+                    timeLeft--;
+                    if (timeLeft > 0) {
+                        logTelemetry(`${timeLeft}...`, "feed-timer");
+                    } else {
+                        clearInterval(interval);
+                        resolve(); 
+                    }
+                }, 1000);
+            });
+        }
+
+        function triggerFlash() {
+            flashBang.classList.remove('flash-active');
+            void flashBang.offsetWidth; 
+            flashBang.classList.add('flash-active');
+        }
+
+        function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+    </script>
 </body>
 </html>

@@ -1,0 +1,28 @@
+{
+  "name": "flik_software",
+  "version": "1.0.0",
+  "description": "FLIK is a fully automated, 70s-inspired photobooth system designed to deliver a nostalgic, mechanical user experience.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Seanski29/photobooth.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Seanski29/photobooth/issues"
+  },
+  "homepage": "https://github.com/Seanski29/photobooth#readme",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "serialport": "^13.0.0",
+    "sharp": "^0.35.3",
+    "socket.io": "^4.8.3"
+  }
+}
