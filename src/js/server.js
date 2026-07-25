@@ -2,7 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
-const { exec } = require('child_process');
+const { exec, spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const { SerialPort, ReadlineParser } = require('serialport');
@@ -21,6 +21,7 @@ app.use('/archive', express.static(masterFolder));
 
 if (!fs.existsSync(masterFolder)) fs.mkdirSync(masterFolder, { recursive: true });
 
+// --- TERMINAL LOGGER ---
 const MAX_LOGS = 100;
 let terminalHistory = ['> System initialized. Awaiting hardware...'];
 
@@ -31,6 +32,39 @@ function addLog(msg) {
     }
     io.emit('terminal_log', msg);
 }
+
+// --- NEW: PERSISTENT DATABASE SYSTEM ---
+const statsFilePath = path.join(__dirname, 'stats.json');
+
+let totalRevenue = 0;
+let totalSessions = 0;
+
+// Loads saved data when the server boots
+function loadStats() {
+    try {
+        if (fs.existsSync(statsFilePath)) {
+            const data = JSON.parse(fs.readFileSync(statsFilePath, 'utf8'));
+            totalRevenue = data.totalRevenue || 0;
+            totalSessions = data.totalSessions || 0;
+            addLog(`> 💾 Loaded historical data: ${totalRevenue} PHP / ${totalSessions} Sessions`);
+        }
+    } catch (err) {
+        addLog("> ⚠️ Failed to read stats.json. Starting fresh.");
+    }
+}
+
+// Saves data to the hard drive instantly
+function saveStats() {
+    try {
+        fs.writeFileSync(statsFilePath, JSON.stringify({ totalRevenue, totalSessions }));
+    } catch (err) {
+        console.error("Failed to save stats:", err);
+    }
+}
+
+// Initialize the database on startup
+loadStats();
+
 
 app.get('/api/gallery', (req, res) => {
     try {
@@ -81,12 +115,10 @@ let sessionInProgress = false;
 
 // --- HARDWARE & FINANCIAL STATE ---
 let arduinoConnected = false; 
-const SESSION_COST = 200; // You can change this to 100 or whatever you need later
+const SESSION_COST = 200; 
 
-let totalRevenue = 0;
-let totalSessions = 0;
-let arduinoTotal = 0; // The lifetime count the Arduino sends
-let availableBalance = 0; // What the customer actually has left to spend
+let arduinoTotal = 0; 
+let availableBalance = 0; 
 
 let sequenceInterval;
 let sequenceTimeout;
@@ -151,8 +183,6 @@ function capturePhoto() {
                     addLog(`ERROR: Sharp failed to stitch collage.`);
                 } finally {
                     currentSessionPhotos = []; 
-                    
-                    // BUG FIX: Unlock the system cleanly so it can be played again
                     sessionInProgress = false; 
                 }
             }, 3000); 
@@ -160,34 +190,31 @@ function capturePhoto() {
     });
 }
 
-// BUG FIX: The Race Condition & Session Cost Logic
 async function startSessionLoop(isFreePlay = false) {
     if (sessionInProgress) {
         addLog("> ⚠️ Session already processing. Ignoring duplicate command.");
         return; 
     }
     
-    // LOCK IMMEDIATELY: Prevents overlapping negative countdowns
     sessionInProgress = true; 
 
     addLog("> 🔍 Running Pre-Flight Hardware Diagnostics...");
 
     if (!arduinoConnected) {
         addLog("ERROR: ❌ SYSTEM HALTED. Master Controller (Arduino) offline.");
-        sessionInProgress = false; // Unlock if failed
+        sessionInProgress = false; 
         return; 
     }
 
     const cameraReady = await checkCameraConnection();
     if (!cameraReady) {
         addLog("ERROR: ❌ SYSTEM HALTED. DSLR Camera offline.");
-        sessionInProgress = false; // Unlock if failed
+        sessionInProgress = false; 
         return; 
     }
 
     addLog("> ✅ Diagnostics passed. System Secured.");
     
-    // BUG FIX: Deduct balance automatically for regular plays
     if (!isFreePlay) {
         availableBalance -= SESSION_COST;
         io.emit('hardware_update', { type: 'balance', value: availableBalance });
@@ -197,7 +224,10 @@ async function startSessionLoop(isFreePlay = false) {
     }
     
     currentSessionPhotos = [];
+    
+    // NEW: Save total sessions directly to the drive
     totalSessions++;
+    saveStats();
     
     io.emit('audit_update', { revenue: totalRevenue, sessions: totalSessions });
     io.emit('hardware_update', { type: 'trigger', value: 'START' });
@@ -265,9 +295,8 @@ parser.on('data', (data) => {
         
     } else if (cleanData.includes('TRIGGER: START') || cleanData.includes('BUTTON_CLICKED')) {
         
-        // BUG FIX: Check if the user has enough money to buy a session
         if (availableBalance >= SESSION_COST) {
-            startSessionLoop(false); // standard paid session
+            startSessionLoop(false); 
         } else {
             addLog(`ERROR: ❌ INSUFFICIENT FUNDS. Balance: ${availableBalance} PHP (Requires ${SESSION_COST} PHP).`);
         }
@@ -275,11 +304,14 @@ parser.on('data', (data) => {
     } else if (cleanData.includes('BALANCE:')) {
         const currentArduinoVal = parseInt(cleanData.split(':')[1]);
         
-        // BUG FIX: Correctly calculates cumulative bills vs available balance
         if (currentArduinoVal > arduinoTotal) {
             const newlyInserted = currentArduinoVal - arduinoTotal;
             availableBalance += newlyInserted;
+            
+            // NEW: Save revenue directly to the drive
             totalRevenue += newlyInserted;
+            saveStats();
+            
             arduinoTotal = currentArduinoVal;
             
             io.emit('audit_update', { revenue: totalRevenue, sessions: totalSessions });
@@ -293,7 +325,7 @@ io.on('connection', (socket) => {
     
     socket.on('request_sync', () => {
         socket.emit('audit_update', { revenue: totalRevenue, sessions: totalSessions });
-        socket.emit('hardware_update', { type: 'balance', value: availableBalance }); // Pushes true balance to UI on refresh
+        socket.emit('hardware_update', { type: 'balance', value: availableBalance }); 
         socket.emit('terminal_history', terminalHistory);
     });
 
@@ -312,7 +344,7 @@ io.on('connection', (socket) => {
     
     socket.on('force_start', () => {
         addLog(`> ⚠️ OPERATOR OVERRIDE: FORCE START INITIALIZED`);
-        startSessionLoop(true); // Pass true so it doesn't cost money
+        startSessionLoop(true); 
     });
     
     socket.on('abort_session', () => {
@@ -323,6 +355,22 @@ io.on('connection', (socket) => {
         currentSessionPhotos = [];
         port.write("SESSION_COMPLETE\n");
         io.emit('hardware_update', { type: 'status', value: 'IDLE' });
+    });
+
+    // --- NEW: RESTART SYSTEM LISTENER ---
+    socket.on('restart_system', () => {
+        addLog(`> 🔄 OPERATOR COMMAND: SYSTEM REBOOTING IN 3 SECONDS...`);
+        
+        // Give the UI time to show the log message before cutting power
+        setTimeout(() => {
+            // Spawn a cloned, detached process of the exact command that started this one
+            const child = spawn(process.argv[0], process.argv.slice(1), {
+                detached: true,
+                stdio: 'inherit'
+            });
+            child.unref(); // Detach the new process from the old one
+            process.exit(); // Kill the current running script
+        }, 3000);
     });
 });
 

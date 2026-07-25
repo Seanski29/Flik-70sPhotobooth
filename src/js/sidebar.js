@@ -4,6 +4,16 @@ const sidebarHTML = `
         .sidebar-nav ul li a { font-size: 18px; padding: 18px 20px; display: flex; align-items: center; gap: 15px;}
         .sidebar-nav ul li a svg { width: 28px; height: 28px; }
         .btn-logout { font-size: 18px; padding: 18px 20px; display: flex; align-items: center; gap: 15px; }
+
+        /* Logout modal styles */
+        .logout-modal-overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.45); z-index: 9999; }
+        .logout-modal { background: #fff; padding: 20px; border-radius: 8px; width: 320px; box-shadow: 0 6px 18px rgba(0,0,0,0.15); text-align: left; }
+        .logout-modal h2 { margin: 0 0 8px 0; font-size: 18px; }
+        .logout-modal p { margin: 0 0 16px 0; color: #333; }
+        .logout-modal-actions { display:flex; justify-content:flex-end; gap:10px; }
+        .logout-modal-actions button { padding: 8px 12px; border-radius: 6px; border: none; cursor: pointer; }
+        .logout-cancel { background: #f0f0f0; }
+        .logout-confirm { background: #d9534f; color: #fff; }
     </style>
     <aside class="sys-sidebar">
         <div class="sidebar-brand">
@@ -34,6 +44,18 @@ const sidebarHTML = `
             </a>
         </div>
     </aside>
+
+    <!-- Logout modal injected into the sidebar HTML so it stays local to the component -->
+    <div class="logout-modal-overlay" aria-hidden="true">
+        <div class="logout-modal" role="dialog" aria-modal="true" aria-labelledby="logout-title">
+            <h2 id="logout-title">Confirm Logout</h2>
+            <p>Are you sure you want to log out?</p>
+            <div class="logout-modal-actions">
+                <button class="logout-cancel" type="button">Cancel</button>
+                <button class="logout-confirm" type="button">Log out</button>
+            </div>
+        </div>
+    </div>
 `;
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -47,5 +69,56 @@ document.addEventListener("DOMContentLoaded", () => {
                 link.parentElement.classList.add("active");
             }
         });
+            
+            // Replace browser confirm with custom modal UI
+            const logoutLink = container.querySelector('.btn-logout');
+            const overlay = container.querySelector('.logout-modal-overlay');
+            const confirmBtn = container.querySelector('.logout-confirm');
+            const cancelBtn = container.querySelector('.logout-cancel');
+            let targetHref = null;
+
+            function showModal(href) {
+                targetHref = href;
+                overlay.style.display = 'flex';
+                overlay.setAttribute('aria-hidden', 'false');
+                // focus the cancel button for a safe default
+                cancelBtn && cancelBtn.focus();
+            }
+
+            function hideModal() {
+                overlay.style.display = 'none';
+                overlay.setAttribute('aria-hidden', 'true');
+                targetHref = null;
+            }
+
+            if (logoutLink) {
+                logoutLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const href = logoutLink.getAttribute('href') || 'login.html';
+                    showModal(href);
+                });
+            }
+
+            if (confirmBtn) {
+                confirmBtn.addEventListener('click', () => {
+                    if (targetHref) window.location.href = targetHref;
+                });
+            }
+
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', () => hideModal());
+            }
+
+            // Close when clicking outside the modal
+            if (overlay) {
+                overlay.addEventListener('click', (e) => {
+                    if (e.target === overlay) hideModal();
+                });
+            }
+
+            // Close on Escape key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && overlay && overlay.style.display === 'flex') hideModal();
+            });
     }
 });

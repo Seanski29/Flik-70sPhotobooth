@@ -23,7 +23,6 @@
         }
         .btn-clear:hover { background: #4b5563; }
 
-        /* BUG FIX: Strict height rules to enforce internal scrolling */
         .terminal {
             background: #000; border: 1px solid #333; border-radius: 8px;
             height: 650px; min-height: 650px; max-height: 650px; 
@@ -73,6 +72,11 @@
         .btn-abort:hover { background-color: #dc2626; }
         .btn-abort:active { transform: scale(0.98); }
         
+        /* NEW: Restart Button Style */
+        .btn-restart { background-color: #f97316; }
+        .btn-restart:hover { background-color: #ea580c; }
+        .btn-restart:active { transform: scale(0.98); }
+
         .btn-audio { background-color: #8b5cf6; }
         .btn-audio:hover { background-color: #7c3aed; }
         .btn-audio:active { transform: scale(0.98); }
@@ -144,6 +148,8 @@
                     <h3 style="margin-top: 10px;">Session Overrides</h3>
                     <button id="btnForceStart" class="btn-op btn-force">📸 Force Start (Free Play)</button>
                     <button id="btnAbort" class="btn-op btn-abort">🛑 Abort Session</button>
+                    <!-- NEW: Restart System Button -->
+                    <button id="btnRestart" class="btn-op btn-restart" onclick="triggerSystemRestart()">🔄 Restart System Backend</button>
                     
                     <h3 style="margin-top: 10px;">Audio Diagnostics</h3>
                     <button id="btnTestAudio" class="btn-op btn-audio" onclick="toggleTestAudio()">🔊 Test Audio (Play)</button>
@@ -223,7 +229,7 @@
             const logElement = document.createElement('div');
             logElement.classList.add('log-entry');
             if (data.includes('INSUFFICIENT_FUNDS') || data.includes('ABORTED') || data.includes('ERROR')) logElement.classList.add('log-error');
-            if (data.includes('BALANCE')) logElement.classList.add('log-money');
+            if (data.includes('BALANCE') || data.includes('Loaded historical')) logElement.classList.add('log-money');
             
             logElement.textContent = data.startsWith('>') ? data : `> ${data}`;
             terminalBox.appendChild(logElement);
@@ -299,6 +305,19 @@
             socket.emit('abort_session');
             document.getElementById('resultOverlay').style.display = 'none'; 
         });
+
+        // --- NEW: RESTART SYSTEM FUNCTION ---
+        function triggerSystemRestart() {
+            // Ask for confirmation so the operator doesn't accidentally kill a live session
+            if (confirm("⚠️ Are you sure you want to completely reboot the backend system?")) {
+                socket.emit('restart_system');
+                
+                // Automatically reload the front-end interface a few seconds after the backend dies
+                setTimeout(() => {
+                    location.reload();
+                }, 4000);
+            }
+        }
     </script>
 </body>
 </html>

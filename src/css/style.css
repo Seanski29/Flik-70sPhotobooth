@@ -128,6 +128,8 @@ body {
 .app-layout {
     display: flex;
     height: 100vh;
+    width: 100vw;
+    overflow: hidden;
 }
 
 #sidebar-container {
@@ -135,10 +137,9 @@ body {
     display: flex;
 }
 
-/* Update your existing sidebar class to fill 100% of that container */
 .sys-sidebar {
     width: 250px;
-    height: 100%; /* <-- Add this line */
+    height: 100%;
     background-color: var(--dark-brown);
     display: flex;
     flex-direction: column;
@@ -215,31 +216,33 @@ body {
 /* Workspace */
 .workspace {
     flex-grow: 1;
-    padding: 40px 60px;
+    padding: 25px 40px;
     display: flex;
     flex-direction: column;
-    overflow-y: auto;
+    height: 100vh;
+    overflow: hidden;
 }
 
 .workspace-header {
-    margin-bottom: 40px;
+    margin-bottom: 20px;
     border-bottom: 2px solid var(--dark-brown);
-    padding-bottom: 20px;
+    padding-bottom: 12px;
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
+    flex-shrink: 0;
 }
 
 .page-title {
     font-family: var(--font-brand);
     color: var(--flik-red);
-    font-size: 3.5rem;
+    font-size: 2.5rem;
     letter-spacing: 3px;
-    margin-bottom: 5px;
+    margin-bottom: 3px;
 }
 
 .page-subtitle {
-    font-size: 1.4rem;
+    font-size: 1.1rem;
     font-weight: 600;
     color: var(--dark-brown);
 }
@@ -254,7 +257,6 @@ body {
 }
 
 .dash-card {
-    background-color: transparent;
     border: var(--border-hard);
     border-radius: 12px;
     padding: 30px;
@@ -290,18 +292,18 @@ body {
     background-color: var(--bg-beige);
     border: var(--border-hard);
     border-radius: 12px;
-    padding: 30px;
+    padding: 20px 25px;
     box-shadow: var(--shadow-retro);
-    margin-bottom: 30px;
+    margin-bottom: 20px;
 }
 
 .status-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 15px 0;
+    padding: 12px 0;
     border-bottom: 1px solid rgba(123, 75, 24, 0.2);
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     font-weight: 600;
 }
 
@@ -314,14 +316,16 @@ body {
 .ind-green { background-color: #4CAF50; color: white; }
 .ind-red { background-color: var(--flik-red); color: white; }
 
+/* Dynamic Responsive Terminal */
 .terminal {
     background-color: var(--text-dark);
     color: #00FF00;
     font-family: monospace;
-    padding: 20px;
-    height: 300px;
+    padding: 15px;
+    flex: 1;
+    min-height: 0;
     border-radius: 8px;
-    overflow-y: scroll;
+    overflow-y: auto;
     border: 4px solid var(--dark-brown);
 }
 
@@ -363,11 +367,8 @@ body {
 }
 
 /* --- STATUS PAGE SPECIFIC UI --- */
-
-/* Indicator Additions */
 .ind-yellow { background-color: #F5A623; color: white; border-color: #F5A623; }
 
-/* Panel Headings */
 .panel-heading {
     font-size: 1.3rem;
     color: var(--dark-brown);
@@ -375,7 +376,6 @@ body {
     font-weight: 700;
 }
 
-/* Master Health Banner */
 .health-banner {
     display: flex;
     align-items: center;
@@ -412,7 +412,6 @@ body {
     color: var(--dark-brown);
 }
 
-/* Resource Progress Bars */
 .resource-block {
     margin-bottom: 25px;
 }
@@ -455,11 +454,9 @@ body {
 .fill-red { background-color: var(--flik-red); }
 
 /* --- CONTROLS PAGE SPECIFIC UI --- */
-
-/* Controls Grid Layout */
 .controls-grid-layout {
     display: grid;
-    grid-template-columns: 1fr 1fr; /* Two columns */
+    grid-template-columns: 1fr 1fr;
     gap: 30px;
 }
 
@@ -475,32 +472,30 @@ body {
     margin-top: 10px;
 }
 
-/* Secondary / Outline Buttons */
 .btn-outline {
     background-color: transparent;
-    border: 2px solid var(--text-muted);
-    color: var(--text-primary);
+    border: 2px solid var(--dark-brown);
+    color: var(--dark-brown);
     box-shadow: none;
     margin-top: 0;
 }
 
 .btn-outline:hover {
-    border-color: var(--text-light);
-    color: var(--text-light);
-    background-color: rgba(244, 235, 224, 0.05);
+    border-color: var(--text-dark);
+    color: var(--text-dark);
+    background-color: rgba(123, 75, 24, 0.05);
 }
 
 .btn-outline:active {
     transform: scale(0.98);
 }
 
-/* Danger Buttons */
 .btn-danger {
     background-color: transparent;
     border: 2px solid var(--flik-red);
     color: var(--flik-red);
     padding: 15px;
-    border-radius: 8px; /* Sharper corners for system actions */
+    border-radius: 8px;
     font-size: 1.1rem;
     font-weight: 600;
     cursor: pointer;
@@ -512,7 +507,6 @@ body {
     color: var(--text-light);
 }
 
-/* Danger Zone Panel Outline */
 .danger-zone {
     border-color: rgba(250, 62, 62, 0.3);
 }
@@ -525,7 +519,7 @@ body {
     padding: 12px 0;
     border-bottom: 1px solid rgba(123, 75, 24, 0.2);
     font-size: 1.1rem;
-    color: var(--text-primary);
+    color: var(--text-dark);
 }
 
 .toggle-switch {
@@ -535,25 +529,22 @@ body {
     height: 26px;
 }
 
-/* Hide default HTML checkbox */
 .toggle-switch input {
     opacity: 0;
     width: 0;
     height: 0;
 }
 
-/* The slider track */
 .slider {
     position: absolute;
     cursor: pointer;
     top: 0; left: 0; right: 0; bottom: 0;
-    background-color: var(--bg-base);
+    background-color: var(--bg-beige);
     border: 2px solid var(--dark-brown);
     transition: .3s;
     border-radius: 26px;
 }
 
-/* The slider knob */
 .slider:before {
     position: absolute;
     content: "";
@@ -561,12 +552,11 @@ body {
     width: 18px;
     left: 2px;
     bottom: 2px;
-    background-color: var(--text-muted);
+    background-color: var(--dark-brown);
     transition: .3s;
     border-radius: 50%;
 }
 
-/* Checked State */
 .toggle-switch input:checked + .slider {
     background-color: rgba(250, 62, 62, 0.1);
     border-color: var(--flik-red);
@@ -578,42 +568,84 @@ body {
     box-shadow: 0 0 10px rgba(250, 62, 62, 0.5);
 }
 
-/* --- LIVE FEED DASHBOARD --- */
-.dashboard-split {
+/* --- LIVE FEED DASHBOARD (SCaleable for 1366x768) --- */
+.dashboard-container {
     display: flex;
-    gap: 30px;
+    gap: 20px;
+    height: calc(100vh - 110px);
+    align-items: stretch;
+}
+
+.terminal-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
     height: 100%;
 }
 
-.feed-container {
-    flex: 2;
-    overflow-y: auto;
+.terminal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #888;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    background: var(--panel-bg, #1e1e1e);
+    padding: 10px 15px;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.btn-clear {
+    background: #374151;
+    color: #fff;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.btn-clear:hover {
+    background: #4b5563;
+}
+
+.right-column {
+    width: 380px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    background-color: var(--bg-beige);
+    gap: 12px;
+    flex-shrink: 0;
+    overflow-y: auto;
+    height: 100%;
+    padding-right: 2px;
 }
 
-.feed-item {
-    padding: 12px 15px;
+.preview-card {
+    background: var(--panel-bg, #1e1e1e);
+    padding: 10px;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+#webcam-preview {
+    width: 100%;
+    aspect-ratio: 4/3;
+    height: auto;
+    object-fit: cover;
     border-radius: 6px;
-    display: flex;
-    gap: 15px;
-    font-family: monospace;
-    font-size: 1.05rem;
-    border-left: 4px solid transparent;
+    background-color: #111;
+    transform: scaleX(-1);
+    transition: filter 0.3s ease;
 }
 
-.feed-time {
-    color: var(--text-muted);
-    min-width: 80px;
-}
-
-/* Feed Categories */
-.feed-sys { background-color: rgba(74, 46, 11, 0.05); border-left-color: var(--text-muted); }
-.feed-money { background-color: rgba(76, 175, 80, 0.1); border-left-color: #4CAF50; color: #2E7D32; font-weight: 600;}
-.feed-action { background-color: rgba(123, 75, 24, 0.08); border-left-color: var(--dark-brown); }
-.feed-timer { background-color: transparent; border-left-color: var(--flik-red); padding-top: 4px; padding-bottom: 4px;}
+.filter-NORMAL { filter: none; }
+.filter-NOIR { filter: grayscale(100%) contrast(140%) brightness(95%); }
+.filter-FILM-II { filter: sepia(20%) contrast(110%) saturate(130%) hue-rotate(-5deg); }
 
 .session-state-container {
     flex: 1;
@@ -628,7 +660,7 @@ body {
 }
 
 .state-card h3 {
-    color: var(--text-muted);
+    color: var(--text-dark);
     font-size: 1.1rem;
     text-transform: uppercase;
     letter-spacing: 1px;
@@ -677,7 +709,7 @@ body {
 .archive-placeholder {
     background-color: var(--dark-brown);
     color: var(--text-light);
-    height: 300px; /* Approximates a 2x6 photo strip ratio */
+    height: 300px;
     border-radius: 8px;
     display: flex;
     align-items: center;
