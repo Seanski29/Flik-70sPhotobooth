@@ -1,0 +1,22 @@
+{
+  "configurations": [
+    {
+      "name": "Arduino Mega",
+      "compilerPath": "C:\\Program Files\\Arduino CLI\\arduino-cli.exe",
+      "includePath": [
+        "C:\\Users\\Sean Del Rosario\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.8\\cores\\arduino",
+        "C:\\Users\\Sean Del Rosario\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.8\\variants\\mega"
+      ],
+      "forcedInclude": [
+        "C:\\Users\\Sean Del Rosario\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.8\\cores\\arduino\\Arduino.h"
+      ],
+      "defines": [
+        "ARDUINO=10808",
+        "__AVR_ATmega2560__"
+      ],
+      "compileCommands": "",
+      "intelliSenseMode": "windows-gcc-x64"
+    }
+  ],
+  "version": 4
+}

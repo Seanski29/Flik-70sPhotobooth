@@ -1,3 +1,8 @@
 {
-    "folder-color.pathColors": []
+  "folder-color.pathColors": [],
+  "arduino.path": "C:\\Program Files\\Arduino CLI",
+  "arduino.commandPath": "C:\\Program Files\\Arduino CLI\\arduino-cli.exe",
+  "arduino.useArduinoCli": true,
+  "arduino.defaultBaudRate": 115200,
+  "C_Cpp.default.compilerPath": "C:\\Program Files\\Arduino CLI\\arduino-cli.exe"
 }

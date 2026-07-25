@@ -2,53 +2,148 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>FLIK - The Vault</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FLIK | Revenue Audit</title>
+    
     <link rel="stylesheet" href="../css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Rye&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="http://localhost:3001/socket.io/socket.io.js"></script>
+    
+    <style>
+        .revenue-container {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .finance-card {
+            background: var(--panel-bg, #1e1e1e);
+            padding: 30px;
+            border-radius: 12px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .finance-card h3 {
+            color: #888;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 15px;
+        }
+
+        .money-text {
+            font-size: 48px;
+            font-weight: 800;
+            color: #facc15; /* Gold */
+            margin: 0;
+        }
+
+        .session-text {
+            font-size: 48px;
+            font-weight: 800;
+            color: #3b82f6; /* Blue */
+            margin: 0;
+        }
+
+        /* The Pulse Indicator for Coin Drops */
+        .hardware-status {
+            margin-top: 30px;
+            padding: 20px;
+            background: #111;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .pulse-indicator {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 16px;
+            color: #fff;
+        }
+
+        .pulse-dot {
+            height: 16px;
+            width: 16px;
+            background-color: #333;
+            border-radius: 50%;
+            transition: background-color 0.1s, box-shadow 0.1s;
+        }
+
+        .pulse-active {
+            background-color: #4ade80;
+            box-shadow: 0 0 15px rgba(74, 222, 128, 1);
+        }
+    </style>
 </head>
 <body class="app-layout">
-    <div id="sidebar-container"></div>
-    
+
+    <div id="sidebar-container"></div> <!-- Your future sidebar goes here -->
+
     <main class="workspace">
         <header class="workspace-header">
             <div>
-                <h2 class="page-title">The Vault</h2>
-                <p class="page-subtitle">Financial Analytics & Cash Box Status</p>
+                <h2 class="page-title">💰 REVENUE AUDIT</h2>
+                <p class="page-subtitle">Secure Financial Tracking</p>
             </div>
-            <button class="btn-danger" style="padding: 10px 25px;">Empty Cash Box (Reset)</button>
         </header>
 
-        <div class="controls-grid-layout" style="grid-template-columns: 1fr 1fr 1fr;">
-            <div class="panel stat-block">
-                <h3 style="color: var(--text-muted); margin-bottom: 10px;">Current Event Revenue</h3>
-                <div style="font-size: 3rem; font-weight: 700; color: var(--text-dark);">₱4,250</div>
-                <p style="color: #4CAF50; font-weight: 600;">+₱800 in last hour</p>
-            </div>
-            
-            <div class="panel stat-block">
-                <h3 style="color: var(--text-muted); margin-bottom: 10px;">Total Pulses Received</h3>
-                <div style="font-size: 3rem; font-weight: 700; color: var(--text-dark);">425</div>
-                <p style="color: var(--text-muted);">Est. 85 Sessions</p>
+        <div class="revenue-container">
+            <!-- Total Money Collected -->
+            <div class="finance-card">
+                <h3>Shift Revenue</h3>
+                <p class="money-text" id="revenueDisplay">0 PHP</p>
             </div>
 
-            <div class="panel stat-block">
-                <h3 style="color: var(--text-muted); margin-bottom: 10px;">Physical Vault Capacity</h3>
-                <div style="font-size: 3rem; font-weight: 700; color: var(--flik-red);">85%</div>
-                <p style="color: var(--text-muted);">Approx. 340 bills stored</p>
+            <!-- Total Sessions Run -->
+            <div class="finance-card">
+                <h3>Sessions</h3>
+                <p class="session-text" id="sessionCountDisplay">0</p>
             </div>
         </div>
 
-        <section class="panel" style="margin-top: 30px;">
-            <h3 class="panel-heading">Recent Transactions</h3>
-            <div class="transaction-list">
-                <div class="status-row"><span>19:45:12 - Bill Acceptor (Node 01)</span> <span style="font-weight:700;">+ ₱100</span></div>
-                <div class="status-row"><span>19:45:40 - Coin Acceptor (Node 02)</span> <span style="font-weight:700;">+ ₱25</span></div>
-                <div class="status-row"><span>19:32:05 - Bill Acceptor (Node 01)</span> <span style="font-weight:700;">+ ₱50</span></div>
-                <div class="status-row"><span>19:10:22 - Bill Acceptor (Node 01)</span> <span style="font-weight:700;">+ ₱100</span></div>
+        <div class="hardware-status">
+            <span style="color: #888; font-weight: 600;">COIN ACCEPTOR STATUS:</span>
+            <div class="pulse-indicator">
+                <span id="pulseText">Awaiting input...</span>
+                <span class="pulse-dot" id="pulseDot"></span>
             </div>
-        </section>
+        </div>
     </main>
 
     <script src="../js/sidebar.js"></script>
+    <script>
+        const socket = io('http://localhost:3001');
+
+        // Listen for the audit updates from server.js
+        socket.on('audit_update', (data) => {
+            document.getElementById('revenueDisplay').innerText = `${data.revenue} PHP`;
+            document.getElementById('sessionCountDisplay').innerText = data.sessions;
+        });
+
+        // Flash the green dot whenever physical money is dropped
+        socket.on('pulse_received', () => {
+            const dot = document.getElementById('pulseDot');
+            const text = document.getElementById('pulseText');
+            
+            dot.classList.add('pulse-active');
+            text.innerText = "Money Received!";
+            text.style.color = "#4ade80";
+
+            setTimeout(() => { 
+                dot.classList.remove('pulse-active'); 
+                text.innerText = "Monitoring...";
+                text.style.color = "#fff";
+            }, 500); 
+        });
+    </script>
 </body>
 </html>
