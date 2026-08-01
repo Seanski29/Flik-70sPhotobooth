@@ -24,7 +24,7 @@
 
 body {
     font-family: var(--font-ui);
-    background: url('../../assets/background.jpg') no-repeat center center fixed !important;
+    background: url('../../assets/background.png') no-repeat center center fixed !important;
     background-size: cover !important;
     color: var(--text-dark);
     overflow: hidden; 

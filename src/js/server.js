@@ -120,6 +120,10 @@ let sequenceInterval;
 let sequenceTimeout;
 let normalDebounce; 
 
+// Make port global so socket.io commands can access it
+let port; 
+let parser;
+
 function printCollage(imagePath) {
     addLog(`🖨️ Preparing to print: ${path.basename(imagePath)}`);
     const command = `powershell -command "Start-Process -FilePath '${imagePath}' -Verb Print"`;
@@ -261,87 +265,118 @@ async function startSessionLoop(isFreePlay = false) {
     runPhotoCycle();
 }
 
-const arduinoPort = 'COM9'; 
-const port = new SerialPort({ path: arduinoPort, baudRate: 115200, autoOpen: false });
-const parser = port.pipe(new ReadlineParser({ delimiter: '\r\n' }));
+// --- NEW: AUTO-DETECT ARDUINO COM PORT ---
+async function connectToHardware() {
+    try {
+        const ports = await SerialPort.list();
+        
+        const targetPort = ports.find(p => 
+            (p.manufacturer && p.manufacturer.toLowerCase().includes('arduino')) ||
+            (p.vendorId && (p.vendorId.toUpperCase() === '2341' || p.vendorId.toUpperCase() === '1A86'))
+        );
 
-port.on('error', (err) => {
-    arduinoConnected = false;
-    addLog(`ERROR: 🔌 Arduino connection lost!`);
-});
+        let comPath = '';
 
-port.on('close', () => {
-    arduinoConnected = false;
-    addLog(`ERROR: 🔌 Arduino unplugged!`);
-});
-
-port.open((err) => {
-    if (err) {
-        arduinoConnected = false;
-        addLog(`ERROR: 🔌 Could not find Arduino on ${arduinoPort}.`);
-    } else {
-        arduinoConnected = true;
-        addLog(`> 🔌 System linked to Arduino on ${arduinoPort}`);
-    }
-});
-
-parser.on('data', (data) => {
-    let cleanData = data.trim();
-
-    if (cleanData.includes('FILTER_1')) {
-        cleanData = 'FILTER: NOIR';
-    } else if (cleanData.includes('FILTER_2')) {
-        cleanData = 'FILTER: FILM_II';
-    }
-
-    if (cleanData.includes('FILTER')) {
-        const incomingFilter = cleanData.replace('FILTER:', '').trim();
-
-        if (!sessionInProgress) {
-            if (incomingFilter !== 'NORMAL') {
-                clearTimeout(normalDebounce);
-                if (activeFilter !== incomingFilter) {
-                    activeFilter = incomingFilter;
-                    io.emit('hardware_update', { type: 'filter', value: cleanData });
-                    addLog(`> 🎨 Hardware Filter Set: ${activeFilter}`);
-                }
+        if (targetPort) {
+            comPath = targetPort.path;
+        } else {
+            const fallbackPort = ports.find(p => p.vendorId);
+            if (fallbackPort) {
+                comPath = fallbackPort.path;
             } else {
-                clearTimeout(normalDebounce);
-                normalDebounce = setTimeout(() => {
-                    if (activeFilter !== 'NORMAL') {
-                        activeFilter = 'NORMAL';
-                        io.emit('hardware_update', { type: 'filter', value: 'FILTER: NORMAL' });
-                        addLog(`> 🎨 Hardware Filter Set: NORMAL`);
-                    }
-                }, 250);
+                addLog('ERROR: ❌ No USB hardware detected! Please plug in the Arduino.');
+                return; 
             }
         }
-        
-    } else if (cleanData.includes('TRIGGER: START') || cleanData.includes('BUTTON_CLICKED')) {
-        addLog(`> DEBUG: Button Trigger Received.`);
-        if (availableBalance >= SESSION_COST) {
-            startSessionLoop(false); 
-        } else {
-            addLog(`ERROR: ❌ INSUFFICIENT FUNDS. Balance: ${availableBalance} PHP (Requires ${SESSION_COST} PHP).`);
-        }
-        
-    } else if (cleanData.includes('BALANCE:')) {
-        const currentArduinoVal = parseInt(cleanData.split(':')[1]);
-        
-        if (currentArduinoVal > arduinoTotal) {
-            const newlyInserted = currentArduinoVal - arduinoTotal;
-            availableBalance += newlyInserted;
-            totalRevenue += newlyInserted;
-            saveStats();
-            arduinoTotal = currentArduinoVal;
-            
-            io.emit('audit_update', { revenue: totalRevenue, sessions: totalSessions });
-            io.emit('pulse_received'); 
-            io.emit('hardware_update', { type: 'balance', value: availableBalance });
-            addLog(`> 🪙 Coin Drop Detected: Added ${newlyInserted} PHP.`);
-        }
+
+        port = new SerialPort({ path: comPath, baudRate: 115200, autoOpen: false });
+        parser = port.pipe(new ReadlineParser({ delimiter: '\r\n' }));
+
+        port.on('error', (err) => {
+            arduinoConnected = false;
+            addLog(`ERROR: 🔌 Arduino connection lost!`);
+        });
+
+        port.on('close', () => {
+            arduinoConnected = false;
+            addLog(`ERROR: 🔌 Arduino unplugged!`);
+        });
+
+        port.open((err) => {
+            if (err) {
+                arduinoConnected = false;
+                addLog(`ERROR: 🔌 Could not find Arduino on ${comPath}.`);
+            } else {
+                arduinoConnected = true;
+                addLog(`> 🔌 System linked to Arduino on ${comPath}`);
+            }
+        });
+
+        parser.on('data', (data) => {
+            let cleanData = data.trim();
+
+            if (cleanData.includes('FILTER_1')) {
+                cleanData = 'FILTER: NOIR';
+            } else if (cleanData.includes('FILTER_2')) {
+                cleanData = 'FILTER: FILM_II';
+            }
+
+            if (cleanData.includes('FILTER')) {
+                const incomingFilter = cleanData.replace('FILTER:', '').trim();
+
+                if (!sessionInProgress) {
+                    if (incomingFilter !== 'NORMAL') {
+                        clearTimeout(normalDebounce);
+                        if (activeFilter !== incomingFilter) {
+                            activeFilter = incomingFilter;
+                            io.emit('hardware_update', { type: 'filter', value: cleanData });
+                            addLog(`> 🎨 Hardware Filter Set: ${activeFilter}`);
+                        }
+                    } else {
+                        clearTimeout(normalDebounce);
+                        normalDebounce = setTimeout(() => {
+                            if (activeFilter !== 'NORMAL') {
+                                activeFilter = 'NORMAL';
+                                io.emit('hardware_update', { type: 'filter', value: 'FILTER: NORMAL' });
+                                addLog(`> 🎨 Hardware Filter Set: NORMAL`);
+                            }
+                        }, 250);
+                    }
+                }
+                
+            } else if (cleanData.includes('TRIGGER: START') || cleanData.includes('BUTTON_CLICKED')) {
+                addLog(`> DEBUG: Button Trigger Received.`);
+                if (availableBalance >= SESSION_COST) {
+                    startSessionLoop(false); 
+                } else {
+                    addLog(`ERROR: ❌ INSUFFICIENT FUNDS. Balance: ${availableBalance} PHP (Requires ${SESSION_COST} PHP).`);
+                }
+                
+            } else if (cleanData.includes('BALANCE:')) {
+                const currentArduinoVal = parseInt(cleanData.split(':')[1]);
+                
+                if (currentArduinoVal > arduinoTotal) {
+                    const newlyInserted = currentArduinoVal - arduinoTotal;
+                    availableBalance += newlyInserted;
+                    totalRevenue += newlyInserted;
+                    saveStats();
+                    arduinoTotal = currentArduinoVal;
+                    
+                    io.emit('audit_update', { revenue: totalRevenue, sessions: totalSessions });
+                    io.emit('pulse_received'); 
+                    io.emit('hardware_update', { type: 'balance', value: availableBalance });
+                    addLog(`> 🪙 Coin Drop Detected: Added ${newlyInserted} PHP.`);
+                }
+            }
+        });
+
+    } catch (err) {
+        addLog('ERROR: Failed to scan COM ports.');
+        console.error(err);
     }
-});
+}
+
+connectToHardware();
 
 io.on('connection', (socket) => {
     
@@ -352,7 +387,9 @@ io.on('connection', (socket) => {
         socket.emit('terminal_history', terminalHistory);
     });
 
-    socket.on('session_complete', () => { port.write("SESSION_COMPLETE\n"); });
+    socket.on('session_complete', () => { 
+        if(port && arduinoConnected) port.write("SESSION_COMPLETE\n"); 
+    });
     
     socket.on('clear_terminal', () => {
         terminalHistory = ['> Terminal cleared by operator.'];
@@ -380,7 +417,7 @@ io.on('connection', (socket) => {
         clearTimeout(sequenceTimeout);
         sessionInProgress = false;
         currentSessionPhotos = [];
-        port.write("SESSION_COMPLETE\n");
+        if(port && arduinoConnected) port.write("SESSION_COMPLETE\n");
         io.emit('hardware_update', { type: 'status', value: 'IDLE' });
     });
 

@@ -1,34 +1,32 @@
-// Wait for the DOM to fully load
-document.addEventListener('DOMContentLoaded', () => {
-    
-    // Grab the login form
-    const loginForm = document.getElementById('login-form');
+const loginForm = document.getElementById('login-form');
+const errorMessage = document.getElementById('error-message'); // Grab the new error text
 
-    // Add a submit event listener
-    if (loginForm) {
-        loginForm.addEventListener('submit', (event) => {
-            // Prevent the form from refreshing the page (default browser behavior)
-            event.preventDefault();
+loginForm.addEventListener('submit', function(event) {
+    event.preventDefault(); 
 
-            // Grab the values the operator typed in
-            const usernameInput = document.getElementById('username').value;
-            const passwordInput = document.getElementById('password').value;
+    const user = document.getElementById('username').value;
+    const pass = document.getElementById('password').value;
 
-            // Simple hardcoded authentication for the operator
-            // Note: In a production app, we'd hash this or check a database
-            if (usernameInput === 'admin' && passwordInput === 'flik1970') {
-                
-                console.log('Login successful! Redirecting to Dashboard...');
-                
-                // Redirect the window to the dashboard page
-                // Adjust the path if your dashboard.html is named differently!
-                window.location.href = '../html/dashboard.html'; 
-                
-            } else {
-                // If the credentials fail, alert the user and clear the password field
-                alert('Access Denied: Incorrect Username or Password.');
-                document.getElementById('password').value = '';
-            }
-        });
+    // --- YOUR SECURE CREDENTIALS ---
+    const correctUser = "admin";
+    const correctPass = "admin123";
+
+    if (user === correctUser && pass === correctPass) {
+        // SUCCESS: Hide any previous errors, show the pre-flight modal.
+        errorMessage.style.display = 'none';
+        document.getElementById('digicamModal').style.display = 'flex';
+    } else {
+        // FAILURE: Show the custom red error text on the screen
+        errorMessage.style.display = 'block';
+        
+        // Clear the password field
+        const passInput = document.getElementById('password');
+        passInput.value = '';
+        
+        // Force the cursor back into the password box for immediate re-typing!
+        passInput.focus();
+        
+        // Ensure the modal absolutely stays hidden
+        document.getElementById('digicamModal').style.display = 'none';
     }
 });

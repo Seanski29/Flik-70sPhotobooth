@@ -30,7 +30,7 @@
         </div>
         
         <!-- Changed to trigger the modal via onsubmit -->
-        <form id="login-form" onsubmit="showPreflightModal(event)">
+        <form id="login-form">
             <div class="form-control">
                 <label for="username">Username :</label>
                 <input type="text" id="username" autocomplete="off" required>
@@ -39,6 +39,9 @@
                 <label for="password">Password :</label>
                 <input type="password" id="password" required>
             </div>
+                            <p id="error-message" style="color: #ff4d4d; font-weight: bold; display: none; text-align: center; margin-top: 10px;">
+                    ⚠️ Access Denied: Incorrect username or password.
+                </p>
             <button type="submit" class="btn-primary">Log In</button>
         </form>
         
@@ -56,7 +59,13 @@
 
         // 2. Redirect to dashboard only after confirmation
         function proceedToDashboard() {
-            window.location.href = 'dashboard.html';
+// 1. Your existing code that shows the warning message goes here...
+// (e.g., warningMessage.style.display = 'block';)
+
+// 2. Add the delay before redirecting
+        setTimeout(() => {
+            window.location.href = 'dashboard.html'; // Or whatever your exact path is
+        }, 2500); // 2500 milliseconds = 2.5 seconds of reading time
         }
     </script>
     
