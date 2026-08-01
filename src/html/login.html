@@ -7,12 +7,30 @@
     <link href="https://fonts.googleapis.com/css2?family=Rye&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
 <body class="auth-layout">
+    
+    <!-- NEW: System Pre-Flight Modal -->
+    <div id="digicamModal" class="modal-overlay">
+        <div class="confirm-box" style="text-align: center; border: 1px solid #3b82f6; box-shadow: 0 10px 40px rgba(59, 130, 246, 0.2);">
+            <h3 style="color: #3b82f6; font-size: 22px; margin-bottom: 15px;">📷 System Pre-Flight Check</h3>
+            <p style="color: #ddd; margin-bottom: 25px; line-height: 1.5; font-size: 15px;">
+                Please ensure the <strong>DigiCamControl App</strong> is running and your DSLR camera is powered on and connected before proceeding.
+            </p>
+            <div class="confirm-actions">
+                <button class="btn-modal" style="background: #3b82f6; color: white; width: 100%; font-size: 15px; padding: 14px;" onclick="proceedToDashboard()">
+                    App is Open - Proceed to Dashboard ➔
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div class="auth-panel">
         <div class="brand-header">
             <h1 class="brand-text-login"><img src="../../assets/Logo.png" alt="FLIK Logo"></h1>
             <p class="sys-version">Log in</p>
         </div>
-        <form id="login-form">
+        
+        <!-- Changed to trigger the modal via onsubmit -->
+        <form id="login-form" onsubmit="showPreflightModal(event)">
             <div class="form-control">
                 <label for="username">Username :</label>
                 <input type="text" id="username" autocomplete="off" required>
@@ -23,10 +41,25 @@
             </div>
             <button type="submit" class="btn-primary">Log In</button>
         </form>
+        
         <div class="auth-footer">
             <p>Est. 2026</p>
         </div>
     </div>
+
+    <script>
+        // 1. Intercept the login form submission
+        function showPreflightModal(event) {
+            event.preventDefault(); // Stop the form from redirecting immediately
+            document.getElementById('digicamModal').style.display = 'flex';
+        }
+
+        // 2. Redirect to dashboard only after confirmation
+        function proceedToDashboard() {
+            window.location.href = 'dashboard.html';
+        }
+    </script>
+    
     <script src="../js/login.js"></script>
     <script src="../js/app.js"></script>
 </body>

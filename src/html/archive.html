@@ -92,7 +92,7 @@
                 socket.emit('print_photo', filename);
             }
         }
-
+        // Function to request deletion of a photo
         function requestDelete(filename) {
             fileToDelete = filename;
             document.getElementById('deleteConfirmModal').style.display = 'flex';

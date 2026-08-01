@@ -240,3 +240,59 @@ body {
 .btn-modal { padding: 10px 20px; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
 .btn-cancel { background: #333; color: #fff; } .btn-cancel:hover { background: #444; }
 .btn-confirm-delete { background: #ef4444; color: #fff; } .btn-confirm-delete:hover { background: #dc2626; }
+
+/* --- RESPONSIVE DESIGN (DYNAMIC WINDOW SIZING) --- */
+
+@media (max-width: 1200px) {
+    /* 1. Shrink the sidebar to icons only to save space */
+    .sys-sidebar {
+        width: 80px;
+        transition: width 0.3s ease;
+    }
+    .sidebar-brand img {
+        display: none; /* Hide the big logo */
+    }
+    .sidebar-nav a {
+        padding: 15px;
+        justify-content: center;
+    }
+    .sidebar-nav a svg {
+        margin-right: 0; /* Center the icon */
+    }
+    /* Hide the text in the sidebar */
+    .sidebar-nav a { font-size: 0; }
+    .btn-logout { font-size: 0; justify-content: center; padding: 15px; }
+    .btn-logout svg { margin-right: 0; }
+    .sidebar-footer { padding: 20px 0; }
+}
+
+@media (max-width: 950px) {
+    /* 2. Stack the Dashboard vertically on small windows */
+    .dashboard-container {
+        flex-direction: column;
+        overflow-y: auto; /* Allow scrolling */
+        height: auto;
+    }
+    
+    .terminal-container {
+        min-height: 300px;
+        flex: none; /* Stop it from taking all the height */
+    }
+
+    .right-column {
+        width: 100%; /* Take full width */
+        padding-right: 0;
+        overflow-y: visible;
+    }
+
+    /* 3. Make the Archive Grid adapt better */
+    .gallery-container {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    }
+
+    /* 4. Adjust Vault Stats */
+    .stats-container {
+        flex-direction: column;
+        gap: 15px;
+    }
+}

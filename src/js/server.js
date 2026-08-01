@@ -169,7 +169,7 @@ function capturePhoto() {
             setTimeout(async () => {
                 const collageName = `collage_${Date.now()}.jpg`;
                 const collagePath = path.join(masterFolder, collageName);
-                
+                                
                 try {
                     await generateCollage(currentSessionPhotos, collagePath, lockedSessionFilter);
                     const imageUrl = `http://localhost:3001/archive/${collageName}`;
@@ -384,7 +384,6 @@ io.on('connection', (socket) => {
         io.emit('hardware_update', { type: 'status', value: 'IDLE' });
     });
 
-    // --- NEW: Reset Functions and Manual Print Listener ---
     socket.on('reset_balance', () => {
         availableBalance = 0;
         io.emit('hardware_update', { type: 'balance', value: availableBalance });
@@ -421,11 +420,35 @@ io.on('connection', (socket) => {
     });
 });
 
+
+// --- FILE CHECKER & COLLAGE GENERATOR ---
+
+function waitForFile(filePath, timeoutMs = 5000) {
+    return new Promise((resolve, reject) => {
+        const checkInterval = 200; 
+        let elapsed = 0;
+
+        const timer = setInterval(() => {
+            if (fs.existsSync(filePath)) {
+                clearInterval(timer);
+                setTimeout(() => resolve(true), 200); 
+            }
+            elapsed += checkInterval;
+            if (elapsed >= timeoutMs) {
+                clearInterval(timer);
+                reject(new Error(`Timeout waiting for file: ${filePath}`));
+            }
+        }, checkInterval);
+    });
+}
+
 async function generateCollage(photos, outputPath, filterType) {
     try {
         const resizedImages = await Promise.all(
             photos.map(async (photoPath) => {
-                // Resize based on 4:3 landscape ratio fitting into a 500px width (500x375)
+                
+                await waitForFile(photoPath);
+
                 let img = sharp(photoPath).resize(500, 375, { fit: 'cover' });
                 
                 if (filterType === 'NOIR' || filterType === 'FILTER_1') {
@@ -433,38 +456,45 @@ async function generateCollage(photos, outputPath, filterType) {
                 } 
                 else if (filterType === 'FILM_II' || filterType === 'FILTER_2') {
                     img = img.modulate({ saturation: 1.8, brightness: 1.05 })
-                             .recomb([
-                                 [1.1, 0.0, 0.0],  
-                                 [0.0, 1.05, 0.0], 
-                                 [0.0, 0.0, 0.9]   
-                             ]);
+                            .recomb([
+                                [1.1, 0.0, 0.0],  
+                                [0.0, 1.05, 0.0], 
+                                [0.0, 0.0, 0.9]   
+                            ]);
                 }
                 
                 return img.toBuffer();
             })
         );
         
-        // Setup standard 4x6 inch canvas at 300DPI (1200x1800)
-        // Two 2x6 strips side-by-side with 4:3 images
         await sharp({
             create: { width: 1200, height: 1800, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 1 } }
         }).composite([
-            // --- LEFT STRIP (x = 50 to 550) ---
             { input: resizedImages[0], top: 100, left: 50 },
             { input: resizedImages[1], top: 525, left: 50 },
             { input: resizedImages[2], top: 950, left: 50 },
             { input: resizedImages[3], top: 1375, left: 50 },
             
-            // --- RIGHT STRIP (x = 650 to 1150) ---
             { input: resizedImages[0], top: 100, left: 650 },
             { input: resizedImages[1], top: 525, left: 650 },
             { input: resizedImages[2], top: 950, left: 650 },
             { input: resizedImages[3], top: 1375, left: 650 }
         ]).jpeg({ quality: 90 }).toFile(outputPath);
 
-        // Delete raw images
-        photos.forEach(photoPath => { if (fs.existsSync(photoPath)) fs.unlinkSync(photoPath); });
-    } catch (error) { throw error; }
+        photos.forEach(photoPath => { 
+            if (fs.existsSync(photoPath)) {
+                try {
+                    fs.unlinkSync(photoPath); 
+                } catch(e) {
+                    console.log(`Could not delete raw file: ${photoPath}`);
+                }
+            }
+        });
+        
+    } catch (error) { 
+        console.error("Collage Generation Error:", error);
+        throw error; 
+    }
 }
 
 server.listen(PORT, () => console.log(`🚀 FLIK Master Backend running on port ${PORT}`));
