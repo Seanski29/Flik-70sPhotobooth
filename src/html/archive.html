@@ -5,166 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FLIK | Archive</title>
     <link rel="stylesheet" href="../css/style.css">
-    <style>
-        /* Archive Specific Styles */
-        .gallery-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 20px;
-            margin-top: 20px;
-            padding: 10px;
-            height: 750px;
-            overflow-y: auto;
-        }
-
-        .gallery-item {
-            background: var(--panel-bg, #1e1e1e);
-            padding: 10px;
-            border-radius: 8px;
-            transition: transform 0.2s, box-shadow 0.2s;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            position: relative;
-        }
-
-        .gallery-item:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
-        }
-
-        .gallery-img {
-            width: 100%;
-            border-radius: 4px;
-            object-fit: cover;
-            cursor: pointer; 
-        }
-
-        .gallery-meta {
-            margin-top: 10px;
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 12px;
-            color: #888;
-        }
-
-        /* Delete Button Styles */
-        .btn-delete {
-            background: transparent;
-            border: none;
-            color: #ef4444;
-            cursor: pointer;
-            font-size: 16px;
-            padding: 4px;
-            border-radius: 4px;
-            transition: background 0.2s;
-        }
-
-        .btn-delete:hover {
-            background: rgba(239, 68, 68, 0.2);
-        }
-
-        /* Shared Modal Overlay Background */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95);
-            z-index: 9999;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-        }
-
-        /* Image Preview Specifics */
-        #previewImg {
-            max-height: 85%;
-            border-radius: 8px;
-            box-shadow: 0 0 40px rgba(255,255,255,0.1);
-        }
-
-        .close-btn {
-            position: absolute;
-            top: 20px;
-            right: 30px;
-            color: #fff;
-            font-size: 30px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        /* NEW: Custom Delete Confirmation Modal */
-        .confirm-box {
-            background: #1e1e1e;
-            padding: 30px;
-            border-radius: 12px;
-            border: 1px solid #333;
-            text-align: center;
-            max-width: 400px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-        }
-
-        .confirm-box h3 {
-            margin-top: 0;
-            color: #ef4444;
-            font-size: 20px;
-        }
-
-        .confirm-box p {
-            color: #bbb;
-            margin-bottom: 25px;
-            font-size: 15px;
-        }
-
-        .confirm-actions {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-        }
-
-        .btn-modal {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .btn-cancel {
-            background: #333;
-            color: #fff;
-        }
-
-        .btn-cancel:hover {
-            background: #444;
-        }
-
-        .btn-confirm-delete {
-            background: #ef4444;
-            color: #fff;
-        }
-
-        .btn-confirm-delete:hover {
-            background: #dc2626;
-        }
-    </style>
+    <script src="http://localhost:3001/socket.io/socket.io.js"></script>
 </head>
 <body class="app-layout">
 
     <div id="sidebar-container"></div> 
 
-    <!-- Full Screen Image Preview Modal -->
     <div id="previewModal" class="modal-overlay">
         <span class="close-btn" onclick="closePreview()">&times;</span>
         <h2 style="color: #4ade80; margin-bottom: 20px; font-family: 'Inter', sans-serif;" id="previewTitle">Image Preview</h2>
         <img id="previewImg" src="" alt="Preview">
     </div>
 
-    <!-- NEW: Custom Delete Confirmation Modal -->
     <div id="deleteConfirmModal" class="modal-overlay">
         <div class="confirm-box">
             <h3>⚠️ Delete Photo</h3>
@@ -179,7 +31,7 @@
     <main class="workspace">
         <header class="workspace-header">
             <div>
-                <h2 class="page-title">📁 FLIK ARCHIVE</h2>
+                <h2 class="page-title">📁 <img src="../../assets/Logo.png" alt="FLIK" style="height: 30px; vertical-align: middle;"> ARCHIVE</h2>
                 <p class="page-subtitle">Event Session History</p>
             </div>
             <button onclick="loadGallery()" style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer;">
@@ -187,19 +39,17 @@
             </button>
         </header>
 
-        <div class="gallery-container" id="galleryGrid">
-            <!-- Images will be injected here by JS -->
-        </div>
+        <div class="gallery-container" id="galleryGrid"></div>
     </main>
 
     <script src="../js/sidebar.js"></script>
     <script>
-        // Track which file is queued for deletion
+        const socket = io('http://localhost:3001');
         let fileToDelete = null;
 
         async function loadGallery() {
             const grid = document.getElementById('galleryGrid');
-            grid.innerHTML = '<p style="color: #888;">Loading archive...</p>';
+            grid.innerHTML = '<p style="color: #fff;">Loading archive...</p>';
 
             try {
                 const response = await fetch('http://localhost:3001/api/gallery');
@@ -208,7 +58,7 @@
                 grid.innerHTML = ''; 
 
                 if (images.length === 0) {
-                    grid.innerHTML = '<p style="color: #888;">No sessions found yet.</p>';
+                    grid.innerHTML = '<p style="color: #fff;">No sessions found yet.</p>';
                     return;
                 }
 
@@ -223,56 +73,53 @@
                         <img class="gallery-img" src="${img.url}" alt="${img.name}" loading="lazy" onclick="openPreview('${img.url}', 'Session at ${timeString}')">
                         <div class="gallery-meta">
                             <span>${timeString}</span>
-                            <button class="btn-delete" title="Delete Photo" onclick="requestDelete('${img.name}')">🗑️</button>
+                            <div class="action-group">
+                                <button class="btn-icon btn-print" title="Print Photo" onclick="requestPrint('${img.name}')">🖨️</button>
+                                <button class="btn-icon btn-delete" title="Delete Photo" onclick="requestDelete('${img.name}')">🗑️</button>
+                            </div>
                         </div>
                     `;
                     grid.appendChild(card);
                 });
 
             } catch (error) {
-                console.error("Failed to load gallery:", error);
                 grid.innerHTML = '<p style="color: #ef4444;">Error connecting to server.</p>';
             }
         }
 
-        // --- NEW: Custom Modal Delete Logic ---
+        function requestPrint(filename) {
+            if(confirm("Send this collage to the printer?")) {
+                socket.emit('print_photo', filename);
+            }
+        }
 
-        // 1. Opens the custom modal and stores the filename
         function requestDelete(filename) {
             fileToDelete = filename;
             document.getElementById('deleteConfirmModal').style.display = 'flex';
         }
 
-        // 2. Closes the modal without deleting
         function closeDeleteModal() {
             fileToDelete = null;
             document.getElementById('deleteConfirmModal').style.display = 'none';
         }
 
-        // 3. Actually talks to the server to delete the file
         async function executeDelete() {
             if (!fileToDelete) return;
-
             try {
-                const response = await fetch(`http://localhost:3001/api/gallery/${fileToDelete}`, {
-                    method: 'DELETE'
-                });
-
+                const response = await fetch(`http://localhost:3001/api/gallery/${fileToDelete}`, { method: 'DELETE' });
                 if (response.ok) {
-                    closeDeleteModal(); // Hide modal on success
-                    loadGallery();      // Refresh the grid
+                    closeDeleteModal(); 
+                    loadGallery();      
                 } else {
-                    alert("Failed to delete photo. Check server console.");
+                    alert("Failed to delete photo.");
                     closeDeleteModal();
                 }
             } catch (error) {
-                console.error("Error deleting file:", error);
                 alert("Network error. Is the server running?");
                 closeDeleteModal();
             }
         }
 
-        // --- Existing Preview Logic ---
         function openPreview(url, title) {
             document.getElementById('previewImg').src = url;
             document.getElementById('previewTitle').innerText = title;

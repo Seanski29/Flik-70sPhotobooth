@@ -4,63 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FLIK | The Vault</title>
-    
     <link rel="stylesheet" href="../css/style.css">
     <script src="http://localhost:3001/socket.io/socket.io.js"></script>
-    
-    <style>
-        /* Vault Specific Styles */
-        .stats-container {
-            display: flex;
-            gap: 30px;
-            margin-top: 40px;
-        }
-        
-        .stat-card {
-            background: var(--panel-bg, #1e1e1e);
-            padding: 40px;
-            border-radius: 12px;
-            flex: 1;
-            text-align: center;
-            border: 1px solid #333;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            transition: transform 0.2s ease-in-out;
-        }
-        
-        .stat-card:hover {
-            transform: translateY(-5px);
-        }
-        
-        .stat-card h3 {
-            color: #888;
-            font-size: 16px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            margin-bottom: 20px;
-            margin-top: 0;
-        }
-        
-        .stat-value {
-            font-size: 56px;
-            font-weight: 800;
-            color: #4ade80; /* Green for money */
-            font-family: 'Courier New', Courier, monospace;
-            text-shadow: 0 0 20px rgba(74, 222, 128, 0.2);
-        }
-        
-        .stat-currency {
-            font-size: 24px;
-            color: #fff;
-            font-weight: 600;
-            font-family: 'Inter', sans-serif;
-            text-shadow: none;
-        }
-
-        .stat-sessions {
-            color: #3b82f6; /* Blue for sessions */
-            text-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
-        }
-    </style>
 </head>
 <body class="app-layout">
 
@@ -69,7 +14,7 @@
     <main class="workspace">
         <header class="workspace-header">
             <div>
-                <h2 class="page-title">💰 THE VAULT</h2>
+                <h2 class="page-title">💰 <img src="../../assets/Logo.png" alt="FLIK" style="height: 30px; vertical-align: middle;"> THE VAULT</h2>
                 <p class="page-subtitle">Lifetime Financial Overview & Analytics</p>
             </div>
         </header>
@@ -85,25 +30,30 @@
                 <div class="stat-value stat-sessions" id="totalSessions">0</div>
             </div>
         </div>
+        
+        <div style="text-align: right;">
+            <button class="btn-danger" onclick="resetRevenue()">🚨 Reset Vault (Clear All Data)</button>
+        </div>
     </main>
 
     <script src="../js/sidebar.js"></script>
     <script>
         const socket = io('http://localhost:3001');
 
-        // 1. As soon as the page loads, demand the latest saved data from the server
         socket.on('connect', () => {
-            console.log("Connected to Master Server. Requesting financial sync...");
             socket.emit('request_sync');
         });
 
-        // 2. When the server replies with the data from stats.json, update the screen
         socket.on('audit_update', (data) => {
-            console.log("Vault synced:", data);
-            
             document.getElementById('totalRevenue').innerHTML = `${data.revenue} <span class="stat-currency">PHP</span>`;
             document.getElementById('totalSessions').innerText = data.sessions;
         });
+        
+        function resetRevenue() {
+            if(confirm("WARNING: This will permanently delete all revenue and session history. Are you sure?")) {
+                socket.emit('reset_revenue');
+            }
+        }
     </script>
 </body>
 </html>

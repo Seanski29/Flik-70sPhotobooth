@@ -4,97 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FLIK | Master Dashboard</title>
-    
     <link rel="stylesheet" href="../css/style.css">
     <script src="http://localhost:3001/socket.io/socket.io.js"></script>
-    
-    <style>
-        .dashboard-container { display: flex; gap: 20px; margin-top: 20px; align-items: flex-start; }
-        
-        .terminal-container { flex: 1; display: flex; flex-direction: column; gap: 10px; }
-        .terminal-header { 
-            display: flex; justify-content: space-between; align-items: center; 
-            color: #888; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;
-            background: var(--panel-bg, #1e1e1e); padding: 10px 15px; border-radius: 8px;
-        }
-        .btn-clear { 
-            background: #374151; color: #fff; border: none; padding: 6px 12px; 
-            border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;
-        }
-        .btn-clear:hover { background: #4b5563; }
-
-        .terminal {
-            background: #000; border: 1px solid #333; border-radius: 8px;
-            height: 650px; min-height: 650px; max-height: 650px; 
-            padding: 15px; overflow-y: auto; display: block;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
-            font-family: 'Courier New', Courier, monospace; color: #fff;
-        }
-        
-        .log-entry { margin: 6px 0; color: #0f0; font-size: 18px; font-weight: bold; }
-        .log-error { color: #f00; }
-        .log-money { color: #ff0; }
-        
-        .right-column { width: 450px; display: flex; flex-direction: column; gap: 15px; flex-shrink: 0; }
-
-        .preview-card { background: var(--panel-bg, #1e1e1e); padding: 10px; border-radius: 8px; }
-        #webcam-preview {
-            width: 100%; height: 300px; object-fit: cover; border-radius: 6px;
-            background-color: #111; transform: scaleX(-1); transition: filter 0.3s ease;
-        }
-        
-        .filter-NORMAL { filter: none; }
-        .filter-NOIR { filter: grayscale(100%) contrast(140%) brightness(95%); }
-        .filter-FILM-II { filter: sepia(20%) contrast(110%) saturate(130%) hue-rotate(-5deg); }    
-
-        .panel-box { padding: 15px 20px; background: var(--panel-bg, #1e1e1e); border-radius: 8px; color: #fff; }
-        .panel-box h3 { color: #888; font-size: 13px; margin-top: 0; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
-        
-        .metric { font-size: 16px; margin-bottom: 10px; font-weight: 500; display: flex; justify-content: space-between; align-items: center;}
-        .metric:last-child { margin-bottom: 0; }
-        .metric-value { font-weight: 700; }
-        #sessionDisplay { color: #4ade80; }
-
-        .operator-panel { display: flex; flex-direction: column; gap: 10px; }
-        .filter-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
-        
-        .btn-op {
-            padding: 12px; border: none; border-radius: 6px; font-size: 15px; font-weight: 600;
-            cursor: pointer; transition: all 0.2s; color: #fff;
-        }
-        .btn-filter { background-color: #4b5563; font-size: 13px; }
-        .btn-filter:hover { background-color: #6b7280; }
-        .btn-filter:active { transform: scale(0.95); }
-        .btn-force { background-color: #3b82f6; }
-        .btn-force:hover { background-color: #2563eb; }
-        .btn-force:active { transform: scale(0.98); }
-        .btn-abort { background-color: #ef4444; }
-        .btn-abort:hover { background-color: #dc2626; }
-        .btn-abort:active { transform: scale(0.98); }
-        
-        /* NEW: Restart Button Style */
-        .btn-restart { background-color: #f97316; }
-        .btn-restart:hover { background-color: #ea580c; }
-        .btn-restart:active { transform: scale(0.98); }
-
-        .btn-audio { background-color: #8b5cf6; }
-        .btn-audio:hover { background-color: #7c3aed; }
-        .btn-audio:active { transform: scale(0.98); }
-
-        #resultOverlay {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95); z-index: 9999; 
-            justify-content: center; align-items: center; flex-direction: column;
-        }
-        #finalCollageImg { max-height: 85%; border-radius: 8px; box-shadow: 0 0 40px rgba(255,255,255,0.1); }
-        
-        .close-overlay-btn {
-            position: absolute; top: 20px; right: 30px;
-            color: #fff; font-size: 40px; cursor: pointer;
-            font-weight: bold; background: transparent; border: none;
-        }
-        .close-overlay-btn:hover { color: #ef4444; }
-    </style>
 </head>
 <body class="app-layout">
 
@@ -109,25 +20,24 @@
     <main class="workspace">
         <header class="workspace-header">
             <div>
-                <h2 class="page-title">⚡ FLIK SYSTEM DASHBOARD</h2>
+                <h2 class="page-title">⚡ <img src="../../assets/Logo.png" alt="FLIK" style="height: 30px; vertical-align: middle;"> SYSTEM DASHBOARD</h2>
                 <p class="page-subtitle">Event Command Center</p>
             </div>
+            <button class="btn-op btn-filter" style="padding: 10px 20px; font-size: 14px;" onclick="clearTerminal()">🔄 CLEAR LOGS</button>
         </header>
 
         <div class="dashboard-container">
+            
+            <!-- CLEAN TERMINAL -->
             <div class="terminal-container">
-                <div class="terminal-header">
-                    <span>System Logs</span>
-                    <button class="btn-clear" onclick="clearTerminal()">🔄 CLEAR TERMINAL</button>
-                </div>
                 <div class="terminal" id="terminalBox">
-                    <div class="log-entry">> Initializing UI...</div>
+                    <div class="log-entry">> Initializing System UI...</div>
                 </div>
             </div>
 
             <div class="right-column">
                 <div class="preview-card">
-                    <img id="webcam-preview" class="filter-COLOR" src="http://localhost:5513/liveview.jpg">
+                    <img id="webcam-preview" class="filter-NORMAL" src="http://localhost:5513/liveview.jpg">
                 </div>
 
                 <div class="panel-box">
@@ -145,13 +55,13 @@
                         <button class="btn-op btn-filter" onclick="setManualFilter('FILM_II')">🎞️ Film II</button>
                     </div>
 
-                    <h3 style="margin-top: 10px;">Session Overrides</h3>
+                    <h3 style="margin-top: 5px;">Session Overrides</h3>
                     <button id="btnForceStart" class="btn-op btn-force">📸 Force Start (Free Play)</button>
+                    <button class="btn-op btn-reset" onclick="resetBalance()">💸 Reset Customer Balance</button>
                     <button id="btnAbort" class="btn-op btn-abort">🛑 Abort Session</button>
-                    <!-- NEW: Restart System Button -->
-                    <button id="btnRestart" class="btn-op btn-restart" onclick="triggerSystemRestart()">🔄 Restart System Backend</button>
                     
-                    <h3 style="margin-top: 10px;">Audio Diagnostics</h3>
+                    <h3 style="margin-top: 5px;">System Controls</h3>
+                    <button id="btnRestart" class="btn-op btn-restart" onclick="triggerSystemRestart()">🔄 Restart System Backend</button>
                     <button id="btnTestAudio" class="btn-op btn-audio" onclick="toggleTestAudio()">🔊 Test Audio (Play)</button>
                 </div>
             </div>
@@ -174,10 +84,7 @@
                     countdownAudio.pause();
                     countdownAudio.currentTime = 0;
                     audioUnlocked = true;
-                    console.log("Audio engine globally unlocked.");
-                }).catch(err => {
-                    console.warn("Silent unlock failed, waiting for next click...");
-                });
+                }).catch(err => {});
             }
         }, { once: true });
 
@@ -187,14 +94,12 @@
 
         function toggleTestAudio() {
             const btn = document.getElementById('btnTestAudio');
-            
             if (countdownAudio.paused) {
                 countdownAudio.currentTime = 0;
                 countdownAudio.play().then(() => {
                     btn.innerHTML = "⏹️ Stop Audio Test";
                     appendLog("> 🔊 Audio test playing.");
                 }).catch(err => {
-                    console.warn("Audio blocked:", err);
                     appendLog("ERROR: ❌ Audio blocked by browser policy.");
                 });
             } else {
@@ -205,9 +110,7 @@
             }
         }
 
-        socket.on('connect', () => {
-            socket.emit('request_sync');
-        });
+        socket.on('connect', () => { socket.emit('request_sync'); });
 
         socket.on('terminal_history', (historyArray) => {
             terminalBox.innerHTML = ''; 
@@ -217,9 +120,7 @@
         socket.on('countdown_tick', (second) => {
             if (second === 10) {
                 countdownAudio.currentTime = 0; 
-                countdownAudio.play().catch(err => {
-                    console.warn("⚠️ Audio blocked!");
-                });
+                countdownAudio.play().catch(err => {});
             }
         });
 
@@ -229,29 +130,38 @@
             const logElement = document.createElement('div');
             logElement.classList.add('log-entry');
             if (data.includes('INSUFFICIENT_FUNDS') || data.includes('ABORTED') || data.includes('ERROR')) logElement.classList.add('log-error');
-            if (data.includes('BALANCE') || data.includes('Loaded historical')) logElement.classList.add('log-money');
+            if (data.includes('BALANCE') || data.includes('Loaded historical') || data.includes('reset customer balance')) logElement.classList.add('log-money');
             
             logElement.textContent = data.startsWith('>') ? data : `> ${data}`;
             terminalBox.appendChild(logElement);
             terminalBox.scrollTop = terminalBox.scrollHeight;
         }
 
-        socket.on('terminal_log', (data) => {
-            appendLog(data);
-        });
+        socket.on('terminal_log', (data) => { appendLog(data); });
 
-        function clearTerminal() {
-            socket.emit('clear_terminal');
+        function clearTerminal() { socket.emit('clear_terminal'); }
+
+        function resetBalance() {
+            if(confirm("Are you sure you want to reset the current customer's balance to 0 PHP?")) {
+                socket.emit('reset_balance');
+            }
         }
 
         function applyFilterToPreview(filterName) {
-            const cleanName = filterName.replace('FILTER:', '').trim();
+            let cleanName = filterName.replace('FILTER:', '').trim();
+            if (cleanName === 'FILTER_1' || cleanName === 'B&W') cleanName = 'NOIR';
+            if (cleanName === 'FILTER_2' || cleanName === 'VINTAGE') cleanName = 'FILM_II';
+
             document.getElementById('filterDisplay').innerText = cleanName;
             
             liveView.className = ''; 
-            if (cleanName === 'NORMAL') liveView.classList.add('filter-NORMAL');
-            else if (cleanName === 'NOIR') liveView.classList.add('filter-NOIR');
-            else if (cleanName === 'FILM_II') liveView.classList.add('filter-FILM-II');
+            if (cleanName === 'NOIR') {
+                liveView.classList.add('filter-NOIR');
+            } else if (cleanName === 'FILM_II') {
+                liveView.classList.add('filter-FILM-II');
+            } else {
+                liveView.classList.add('filter-NORMAL');
+            }
         }
 
         socket.on('hardware_update', (data) => {
@@ -275,10 +185,7 @@
             const overlay = document.getElementById('resultOverlay');
             document.getElementById('finalCollageImg').src = imageUrl;
             overlay.style.display = 'flex';
-            
-            overlayTimeout = setTimeout(() => {
-                closeResultOverlay();
-            }, 10000); 
+            overlayTimeout = setTimeout(() => { closeResultOverlay(); }, 10000); 
         });
 
         function closeResultOverlay() {
@@ -306,16 +213,10 @@
             document.getElementById('resultOverlay').style.display = 'none'; 
         });
 
-        // --- NEW: RESTART SYSTEM FUNCTION ---
         function triggerSystemRestart() {
-            // Ask for confirmation so the operator doesn't accidentally kill a live session
             if (confirm("⚠️ Are you sure you want to completely reboot the backend system?")) {
                 socket.emit('restart_system');
-                
-                // Automatically reload the front-end interface a few seconds after the backend dies
-                setTimeout(() => {
-                    location.reload();
-                }, 4000);
+                setTimeout(() => { location.reload(); }, 4000);
             }
         }
     </script>

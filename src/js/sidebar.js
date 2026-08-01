@@ -5,6 +5,10 @@ const sidebarHTML = `
         .sidebar-nav ul li a svg { width: 28px; height: 28px; }
         .btn-logout { font-size: 18px; padding: 18px 20px; display: flex; align-items: center; gap: 15px; }
 
+        /* Brand/logo fit adjustments */
+        .sidebar-brand { padding: 12px; display:flex; align-items:center; justify-content:center; }
+        .sidebar-brand img { max-width: 100%; max-height: 64px; width: auto; height: auto; display: block; }
+
         /* Logout modal styles */
         .logout-modal-overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.45); z-index: 9999; }
         .logout-modal { background: #fff; padding: 20px; border-radius: 8px; width: 320px; box-shadow: 0 6px 18px rgba(0,0,0,0.15); text-align: left; }
@@ -16,8 +20,8 @@ const sidebarHTML = `
         .logout-confirm { background: #d9534f; color: #fff; }
     </style>
     <aside class="sys-sidebar">
-        <div class="sidebar-brand">
-            <h1 class="brand-text">FLIK</h1>
+        <div class="sidebar-brand" size="small">
+            <img src="../../assets/Logo.png" alt="FLIK Logo">
         </div>
         
         <nav class="sidebar-nav">

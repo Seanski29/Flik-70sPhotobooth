@@ -33,13 +33,12 @@ function addLog(msg) {
     io.emit('terminal_log', msg);
 }
 
-// --- NEW: PERSISTENT DATABASE SYSTEM ---
+// --- PERSISTENT DATABASE SYSTEM ---
 const statsFilePath = path.join(__dirname, 'stats.json');
 
 let totalRevenue = 0;
 let totalSessions = 0;
 
-// Loads saved data when the server boots
 function loadStats() {
     try {
         if (fs.existsSync(statsFilePath)) {
@@ -53,7 +52,6 @@ function loadStats() {
     }
 }
 
-// Saves data to the hard drive instantly
 function saveStats() {
     try {
         fs.writeFileSync(statsFilePath, JSON.stringify({ totalRevenue, totalSessions }));
@@ -62,9 +60,7 @@ function saveStats() {
     }
 }
 
-// Initialize the database on startup
 loadStats();
-
 
 app.get('/api/gallery', (req, res) => {
     try {
@@ -111,9 +107,9 @@ app.delete('/api/gallery/:filename', (req, res) => {
 
 let currentSessionPhotos = [];
 let activeFilter = 'NORMAL'; 
+let lockedSessionFilter = 'NORMAL'; 
 let sessionInProgress = false;
 
-// --- HARDWARE & FINANCIAL STATE ---
 let arduinoConnected = false; 
 const SESSION_COST = 200; 
 
@@ -122,10 +118,14 @@ let availableBalance = 0;
 
 let sequenceInterval;
 let sequenceTimeout;
+let normalDebounce; 
 
 function printCollage(imagePath) {
-    addLog(`🖨️ Preparing to print: ${imagePath}`);
+    addLog(`🖨️ Preparing to print: ${path.basename(imagePath)}`);
     const command = `powershell -command "Start-Process -FilePath '${imagePath}' -Verb Print"`;
+    exec(command, (error) => {
+        if (error) addLog(`ERROR: Failed to send to printer.`);
+    });
 }
 
 function checkCameraConnection() {
@@ -171,7 +171,7 @@ function capturePhoto() {
                 const collagePath = path.join(masterFolder, collageName);
                 
                 try {
-                    await generateCollage(currentSessionPhotos, collagePath, activeFilter);
+                    await generateCollage(currentSessionPhotos, collagePath, lockedSessionFilter);
                     const imageUrl = `http://localhost:3001/archive/${collageName}`;
                     
                     io.emit('collage_ready', imageUrl);
@@ -181,6 +181,7 @@ function capturePhoto() {
                     
                 } catch (err) {
                     addLog(`ERROR: Sharp failed to stitch collage.`);
+                    console.error(err);
                 } finally {
                     currentSessionPhotos = []; 
                     sessionInProgress = false; 
@@ -213,7 +214,8 @@ async function startSessionLoop(isFreePlay = false) {
         return; 
     }
 
-    addLog("> ✅ Diagnostics passed. System Secured.");
+    lockedSessionFilter = activeFilter;
+    addLog(`> ✅ Diagnostics passed. System Secured. Filter locked to: ${lockedSessionFilter}`);
     
     if (!isFreePlay) {
         availableBalance -= SESSION_COST;
@@ -224,8 +226,6 @@ async function startSessionLoop(isFreePlay = false) {
     }
     
     currentSessionPhotos = [];
-    
-    // NEW: Save total sessions directly to the drive
     totalSessions++;
     saveStats();
     
@@ -286,15 +286,39 @@ port.open((err) => {
 });
 
 parser.on('data', (data) => {
-    const cleanData = data.trim();
-    addLog(cleanData); 
+    let cleanData = data.trim();
+
+    if (cleanData.includes('FILTER_1')) {
+        cleanData = 'FILTER: NOIR';
+    } else if (cleanData.includes('FILTER_2')) {
+        cleanData = 'FILTER: FILM_II';
+    }
 
     if (cleanData.includes('FILTER')) {
-        io.emit('hardware_update', { type: 'filter', value: cleanData });
-        activeFilter = cleanData.replace('FILTER:', '').trim();
+        const incomingFilter = cleanData.replace('FILTER:', '').trim();
+
+        if (!sessionInProgress) {
+            if (incomingFilter !== 'NORMAL') {
+                clearTimeout(normalDebounce);
+                if (activeFilter !== incomingFilter) {
+                    activeFilter = incomingFilter;
+                    io.emit('hardware_update', { type: 'filter', value: cleanData });
+                    addLog(`> 🎨 Hardware Filter Set: ${activeFilter}`);
+                }
+            } else {
+                clearTimeout(normalDebounce);
+                normalDebounce = setTimeout(() => {
+                    if (activeFilter !== 'NORMAL') {
+                        activeFilter = 'NORMAL';
+                        io.emit('hardware_update', { type: 'filter', value: 'FILTER: NORMAL' });
+                        addLog(`> 🎨 Hardware Filter Set: NORMAL`);
+                    }
+                }, 250);
+            }
+        }
         
     } else if (cleanData.includes('TRIGGER: START') || cleanData.includes('BUTTON_CLICKED')) {
-        
+        addLog(`> DEBUG: Button Trigger Received.`);
         if (availableBalance >= SESSION_COST) {
             startSessionLoop(false); 
         } else {
@@ -307,16 +331,14 @@ parser.on('data', (data) => {
         if (currentArduinoVal > arduinoTotal) {
             const newlyInserted = currentArduinoVal - arduinoTotal;
             availableBalance += newlyInserted;
-            
-            // NEW: Save revenue directly to the drive
             totalRevenue += newlyInserted;
             saveStats();
-            
             arduinoTotal = currentArduinoVal;
             
             io.emit('audit_update', { revenue: totalRevenue, sessions: totalSessions });
             io.emit('pulse_received'); 
             io.emit('hardware_update', { type: 'balance', value: availableBalance });
+            addLog(`> 🪙 Coin Drop Detected: Added ${newlyInserted} PHP.`);
         }
     }
 });
@@ -326,6 +348,7 @@ io.on('connection', (socket) => {
     socket.on('request_sync', () => {
         socket.emit('audit_update', { revenue: totalRevenue, sessions: totalSessions });
         socket.emit('hardware_update', { type: 'balance', value: availableBalance }); 
+        socket.emit('hardware_update', { type: 'filter', value: `FILTER: ${activeFilter}` }); 
         socket.emit('terminal_history', terminalHistory);
     });
 
@@ -337,9 +360,13 @@ io.on('connection', (socket) => {
     });
 
     socket.on('set_filter', (filterName) => {
-        activeFilter = filterName;
-        io.emit('hardware_update', { type: 'filter', value: `FILTER: ${filterName}` });
-        addLog(`> 🎨 OPERATOR OVERRIDE: Filter set to ${filterName}`);
+        if (!sessionInProgress) {
+            activeFilter = filterName;
+            io.emit('hardware_update', { type: 'filter', value: `FILTER: ${filterName}` });
+            addLog(`> 🎨 OPERATOR OVERRIDE: Filter set to ${filterName}`);
+        } else {
+            addLog(`> ⚠️ OVERRIDE DENIED: Cannot change filter while session is active.`);
+        }
     });
     
     socket.on('force_start', () => {
@@ -357,19 +384,39 @@ io.on('connection', (socket) => {
         io.emit('hardware_update', { type: 'status', value: 'IDLE' });
     });
 
-    // --- NEW: RESTART SYSTEM LISTENER ---
+    // --- NEW: Reset Functions and Manual Print Listener ---
+    socket.on('reset_balance', () => {
+        availableBalance = 0;
+        io.emit('hardware_update', { type: 'balance', value: availableBalance });
+        addLog("> 💸 Operator reset customer balance to 0.");
+    });
+    
+    socket.on('reset_revenue', () => {
+        totalRevenue = 0;
+        totalSessions = 0;
+        saveStats();
+        io.emit('audit_update', { revenue: totalRevenue, sessions: totalSessions });
+        addLog("> 🚨 Vault stats permanently reset by operator.");
+    });
+    
+    socket.on('print_photo', (filename) => {
+        const filePath = path.join(masterFolder, filename);
+        if (fs.existsSync(filePath)) {
+            printCollage(filePath);
+        } else {
+            addLog(`ERROR: File not found for printing: ${filename}`);
+        }
+    });
+
     socket.on('restart_system', () => {
         addLog(`> 🔄 OPERATOR COMMAND: SYSTEM REBOOTING IN 3 SECONDS...`);
-        
-        // Give the UI time to show the log message before cutting power
         setTimeout(() => {
-            // Spawn a cloned, detached process of the exact command that started this one
             const child = spawn(process.argv[0], process.argv.slice(1), {
                 detached: true,
                 stdio: 'inherit'
             });
-            child.unref(); // Detach the new process from the old one
-            process.exit(); // Kill the current running script
+            child.unref(); 
+            process.exit(); 
         }, 3000);
     });
 });
@@ -378,13 +425,14 @@ async function generateCollage(photos, outputPath, filterType) {
     try {
         const resizedImages = await Promise.all(
             photos.map(async (photoPath) => {
-                let img = sharp(photoPath).resize(800, 600, { fit: 'cover' });
+                // Resize based on 4:3 landscape ratio fitting into a 500px width (500x375)
+                let img = sharp(photoPath).resize(500, 375, { fit: 'cover' });
                 
-                if (filterType === 'NOIR') {
+                if (filterType === 'NOIR' || filterType === 'FILTER_1') {
                     img = img.grayscale().linear(1.25, -10);
                 } 
-                else if (filterType === 'FILM_II') {
-                    img = img.modulate({ saturation: 1.3, brightness: 1.05 })
+                else if (filterType === 'FILM_II' || filterType === 'FILTER_2') {
+                    img = img.modulate({ saturation: 1.8, brightness: 1.05 })
                              .recomb([
                                  [1.1, 0.0, 0.0],  
                                  [0.0, 1.05, 0.0], 
@@ -395,15 +443,26 @@ async function generateCollage(photos, outputPath, filterType) {
                 return img.toBuffer();
             })
         );
+        
+        // Setup standard 4x6 inch canvas at 300DPI (1200x1800)
+        // Two 2x6 strips side-by-side with 4:3 images
         await sharp({
-            create: { width: 900, height: 2700, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } }
+            create: { width: 1200, height: 1800, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 1 } }
         }).composite([
-            { input: resizedImages[0], top: 50, left: 50 },
-            { input: resizedImages[1], top: 700, left: 50 },
-            { input: resizedImages[2], top: 1350, left: 50 },
-            { input: resizedImages[3], top: 2000, left: 50 }
+            // --- LEFT STRIP (x = 50 to 550) ---
+            { input: resizedImages[0], top: 100, left: 50 },
+            { input: resizedImages[1], top: 525, left: 50 },
+            { input: resizedImages[2], top: 950, left: 50 },
+            { input: resizedImages[3], top: 1375, left: 50 },
+            
+            // --- RIGHT STRIP (x = 650 to 1150) ---
+            { input: resizedImages[0], top: 100, left: 650 },
+            { input: resizedImages[1], top: 525, left: 650 },
+            { input: resizedImages[2], top: 950, left: 650 },
+            { input: resizedImages[3], top: 1375, left: 650 }
         ]).jpeg({ quality: 90 }).toFile(outputPath);
 
+        // Delete raw images
         photos.forEach(photoPath => { if (fs.existsSync(photoPath)) fs.unlinkSync(photoPath); });
     } catch (error) { throw error; }
 }
