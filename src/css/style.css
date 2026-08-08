@@ -295,4 +295,260 @@ body {
         flex-direction: column;
         gap: 15px;
     }
+    /* Settings Container */
+.settings-container {
+    max-width: 800px;
+    /* Pushes the content to the right so the sidebar doesn't cover it */
+    margin-left: 280px; 
+    padding: 2rem;
+    font-family: sans-serif;
+    /* Forces the white cards to sit on top of the checkerboard background */
+    position: relative;
+    z-index: 10;
+}
+
+.settings-card {
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.settings-card h2 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+}
+
+.subtitle {
+    color: #666;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.input-group {
+    margin-bottom: 1rem;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+/* Path Group */
+.path-group {
+    display: flex;
+    gap: 10px;
+}
+.path-group input {
+    flex-grow: 1;
+    padding: 0.5rem;
+    background: #f5f5f5;
+    border: 1px solid #ccc;
+    color: #555;
+}
+
+/* Modals */
+.modal {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    max-width: 500px;
+    width: 90%;
+}
+
+.modal-scroll-area {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-bottom: 1.5rem;
+}
+
+/* Typography Colors */
+.error-text { color: #d32f2f; font-weight: bold; }
+.success-text { color: #2e7d32; font-weight: bold; }
+
+/* Monochrome Dark Mode */
+body.monochrome-mode {
+    background-color: #121212;
+    color: #e0e0e0;
+}
+
+body.monochrome-mode .settings-card {
+    background-color: #1e1e1e;
+    border-color: #333;
+}
+
+body.monochrome-mode input,
+body.monochrome-mode button {
+    background-color: #333;
+    color: #fff;
+    border-color: #555;
+}
+
+body.monochrome-mode .subtitle {
+    color: #aaa;
+}
+
+/* Prevent camera container from being affected by monochrome mode */
+body.monochrome-mode .camera-feed,
+body.monochrome-mode #live-preview {
+    filter: none;
+    background-color: transparent;
+}
+    /* =========================================
+   SETTINGS PAGE LAYOUT
+========================================= */
+
+.settings-container {
+    max-width: 800px;
+    margin: 0;
+    padding: 20px;
+    font-family: 'Inter', system-ui, sans-serif;
+    color: #ffffff; /* Forces all text to white */
+}
+
+/* The Background Cards */
+.settings-card {
+    background: rgba(0, 0, 0, 0.75); /* Dark semi-transparent background */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 25px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(5px); /* Blurs the checkerboard behind the card */
+}
+
+.settings-card h2 {
+    margin-top: 0;
+    margin-bottom: 8px;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    color: #ffffff;
+}
+
+.settings-card .subtitle {
+    color: #cccccc; /* Dimmed white for readability */
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+/* Form Inputs */
+.input-group {
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
+    max-width: 400px; /* Stops inputs from stretching across the screen */
+}
+
+.input-group label {
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #eeeeee;
+}
+
+.input-group input[type="password"],
+.input-group input[type="text"] {
+    padding: 12px;
+    border-radius: 6px;
+    border: 1px solid #555;
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    font-size: 14px;
+    outline: none;
+}
+
+.input-group input:focus {
+    border-color: #4ade80; /* Green highlight on click */
+}
+
+/* Fix the Giant Password Button */
+#password-form .btn-primary {
+    max-width: 250px;
+    padding: 12px 24px;
+    font-size: 15px;
+    font-weight: bold;
+    margin-top: 10px;
+    cursor: pointer;
+    border: none;
+    border-radius: 6px;
+    background-color: #ef4444; /* Red button */
+    color: #ffffff;
+}
+
+/* Sliders and File Paths */
+.slider-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 400px;
+}
+
+.path-group {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.path-group input {
+    flex-grow: 1;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid #555;
+    color: #cccccc;
+    border-radius: 6px;
+}
+
+.path-group button {
+    padding: 12px 20px;
+    cursor: pointer;
+    border-radius: 6px;
+    border: none;
+    background-color: #555;
+    color: white;
+    font-weight: bold;
+}
+
+/* Typography Overrides */
+.about-info p {
+    margin: 8px 0;
+    color: #eeeeee;
+    font-size: 15px;
+}
+
+.legal-links {
+    margin-top: 15px;
+    display: flex;
+    gap: 15px;
+}
+
+.legal-links button {
+    background: none;
+    border: none;
+    color: #4ade80;
+    text-decoration: underline;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0;
+}
 }
