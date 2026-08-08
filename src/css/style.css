@@ -96,7 +96,7 @@ body {
     align-items: flex-end; flex-shrink: 0;
 }
 .page-title {
-    font-family: var(--font-brand); color: var(--flik-red);
+    font-family: var(--font-brand); color: var(--text-light);
     font-size: 2.5rem; letter-spacing: 3px; margin-bottom: 3px;
 }
 .page-subtitle { font-size: 1.1rem; font-weight: 600; color: #fff; text-shadow: 1px 1px 2px #000; }

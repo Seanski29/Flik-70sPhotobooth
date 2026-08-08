@@ -45,10 +45,10 @@ function loadStats() {
             const data = JSON.parse(fs.readFileSync(statsFilePath, 'utf8'));
             totalRevenue = data.totalRevenue || 0;
             totalSessions = data.totalSessions || 0;
-            addLog(`> 💾 Loaded historical data: ${totalRevenue} PHP / ${totalSessions} Sessions`);
+            addLog(`>  Loaded historical data: ${totalRevenue} PHP / ${totalSessions} Sessions`);
         }
     } catch (err) {
-        addLog("> ⚠️ Failed to read stats.json. Starting fresh.");
+        addLog(">  Failed to read stats.json. Starting fresh.");
     }
 }
 
@@ -95,7 +95,7 @@ app.delete('/api/gallery/:filename', (req, res) => {
     try {
         if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath); 
-            addLog(`🗑️ Permanently deleted archive: ${filename}`);
+            addLog(` Permanently deleted archive: ${filename}`);
             res.json({ success: true, message: "File deleted successfully" });
         } else {
             res.status(404).json({ error: "File not found" });
@@ -197,13 +197,13 @@ function capturePhoto() {
 
 async function startSessionLoop(isFreePlay = false) {
     if (sessionInProgress) {
-        addLog("> ⚠️ Session already processing. Ignoring duplicate command.");
+        addLog(">  Session already processing. Ignoring duplicate command.");
         return; 
     }
     
     sessionInProgress = true; 
 
-    addLog("> 🔍 Running Pre-Flight Hardware Diagnostics...");
+    addLog(">  Running  Diagnostics...");
 
     if (!arduinoConnected) {
         addLog("ERROR: ❌ SYSTEM HALTED. Master Controller (Arduino) offline.");
@@ -219,14 +219,14 @@ async function startSessionLoop(isFreePlay = false) {
     }
 
     lockedSessionFilter = activeFilter;
-    addLog(`> ✅ Diagnostics passed. System Secured. Filter locked to: ${lockedSessionFilter}`);
+    addLog(`>  Diagnostics passed. System Secured. Filter locked to: ${lockedSessionFilter}`);
     
     if (!isFreePlay) {
         availableBalance -= SESSION_COST;
         io.emit('hardware_update', { type: 'balance', value: availableBalance });
-        addLog(`> 💸 Payment Accepted: ${SESSION_COST} PHP deducted. Remaining Balance: ${availableBalance} PHP.`);
+        addLog(`>  Payment Accepted: ${SESSION_COST} PHP deducted. Remaining Balance: ${availableBalance} PHP.`);
     } else {
-        addLog(`> 🆓 Free Play Enabled: No balance deducted.`);
+        addLog(`>  Free Play Enabled: No balance deducted.`);
     }
     
     currentSessionPhotos = [];
@@ -252,7 +252,7 @@ async function startSessionLoop(isFreePlay = false) {
             
             if (prepTime === 0) {
                 clearInterval(sequenceInterval);
-                addLog(`> 📸 TAKING PHOTO ${photoCount + 1}...`);
+                addLog(`>  TAKING PHOTO ${photoCount + 1}...`);
                 capturePhoto();
                 photoCount++;
                 
@@ -294,21 +294,21 @@ async function connectToHardware() {
 
         port.on('error', (err) => {
             arduinoConnected = false;
-            addLog(`ERROR: 🔌 Arduino connection lost!`);
+            addLog(`ERROR:  Arduino connection lost!`);
         });
 
         port.on('close', () => {
             arduinoConnected = false;
-            addLog(`ERROR: 🔌 Arduino unplugged!`);
+            addLog(`ERROR:  Arduino unplugged!`);
         });
 
         port.open((err) => {
             if (err) {
                 arduinoConnected = false;
-                addLog(`ERROR: 🔌 Could not find Arduino on ${comPath}.`);
+                addLog(`ERROR:  Could not find Arduino on ${comPath}.`);
             } else {
                 arduinoConnected = true;
-                addLog(`> 🔌 System linked to Arduino on ${comPath}`);
+                addLog(`>  System linked to Arduino on ${comPath}`);
             }
         });
 
@@ -330,7 +330,7 @@ async function connectToHardware() {
                         if (activeFilter !== incomingFilter) {
                             activeFilter = incomingFilter;
                             io.emit('hardware_update', { type: 'filter', value: cleanData });
-                            addLog(`> 🎨 Hardware Filter Set: ${activeFilter}`);
+                            addLog(`>  Hardware Filter Set: ${activeFilter}`);
                         }
                     } else {
                         clearTimeout(normalDebounce);
@@ -338,7 +338,7 @@ async function connectToHardware() {
                             if (activeFilter !== 'NORMAL') {
                                 activeFilter = 'NORMAL';
                                 io.emit('hardware_update', { type: 'filter', value: 'FILTER: NORMAL' });
-                                addLog(`> 🎨 Hardware Filter Set: NORMAL`);
+                                addLog(`>  Hardware Filter Set: NORMAL`);
                             }
                         }, 250);
                     }
@@ -365,7 +365,7 @@ async function connectToHardware() {
                     io.emit('audit_update', { revenue: totalRevenue, sessions: totalSessions });
                     io.emit('pulse_received'); 
                     io.emit('hardware_update', { type: 'balance', value: availableBalance });
-                    addLog(`> 🪙 Coin Drop Detected: Added ${newlyInserted} PHP.`);
+                    addLog(`>  Bill Detected: Added ${newlyInserted} PHP.`);
                 }
             }
         });
@@ -400,19 +400,19 @@ io.on('connection', (socket) => {
         if (!sessionInProgress) {
             activeFilter = filterName;
             io.emit('hardware_update', { type: 'filter', value: `FILTER: ${filterName}` });
-            addLog(`> 🎨 OPERATOR OVERRIDE: Filter set to ${filterName}`);
+            addLog(`>  OVERRIDE: Filter set to ${filterName}`);
         } else {
-            addLog(`> ⚠️ OVERRIDE DENIED: Cannot change filter while session is active.`);
+            addLog(`>  ACTION DENIED: Cannot change filter while session is active.`);
         }
     });
     
     socket.on('force_start', () => {
-        addLog(`> ⚠️ OPERATOR OVERRIDE: FORCE START INITIALIZED`);
+        addLog(`>  FORCE START INITIALIZED`);
         startSessionLoop(true); 
     });
     
     socket.on('abort_session', () => {
-        addLog(`> 🛑 OPERATOR OVERRIDE: SESSION ABORTED`);
+        addLog(`>  OPERATOR OVERRIDE: SESSION ABORTED`);
         clearInterval(sequenceInterval);
         clearTimeout(sequenceTimeout);
         sessionInProgress = false;
@@ -424,7 +424,7 @@ io.on('connection', (socket) => {
     socket.on('reset_balance', () => {
         availableBalance = 0;
         io.emit('hardware_update', { type: 'balance', value: availableBalance });
-        addLog("> 💸 Operator reset customer balance to 0.");
+        addLog(">  Operator reset customer balance to 0.");
     });
     
     socket.on('reset_revenue', () => {
@@ -432,7 +432,7 @@ io.on('connection', (socket) => {
         totalSessions = 0;
         saveStats();
         io.emit('audit_update', { revenue: totalRevenue, sessions: totalSessions });
-        addLog("> 🚨 Vault stats permanently reset by operator.");
+        addLog(">  Vault stats permanently reset by operator.");
     });
     
     socket.on('print_photo', (filename) => {
@@ -445,7 +445,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('restart_system', () => {
-        addLog(`> 🔄 OPERATOR COMMAND: SYSTEM REBOOTING IN 3 SECONDS...`);
+        addLog(`>  OPERATOR COMMAND: SYSTEM REBOOTING IN 3 SECONDS...`);
         setTimeout(() => {
             const child = spawn(process.argv[0], process.argv.slice(1), {
                 detached: true,
@@ -534,4 +534,4 @@ async function generateCollage(photos, outputPath, filterType) {
     }
 }
 
-server.listen(PORT, () => console.log(`🚀 FLIK Master Backend running on port ${PORT}`));
+server.listen(PORT, () => console.log(` FLIK Master Backend running on port ${PORT}`));

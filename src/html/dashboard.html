@@ -13,7 +13,7 @@
 
     <div id="resultOverlay">
         <button class="close-overlay-btn" onclick="closeResultOverlay()">&times;</button>
-        <h2 style="color: #4ade80; margin-bottom: 20px; font-family: 'Inter', sans-serif;">🎉 Session Complete!</h2>
+        <h2 style="color: #4ade80; margin-bottom: 20px; font-family: 'Inter', sans-serif;">Session Complete!</h2>
         <img id="finalCollageImg" src="" alt="Final Strip">
     </div>
 
@@ -23,7 +23,7 @@
                 <h2 class="page-title">SYSTEM DASHBOARD</h2>
                 <p class="page-subtitle">Event Command Center</p>
             </div>
-            <button class="btn-op btn-filter" style="padding: 10px 20px; font-size: 14px;" onclick="clearTerminal()">🔄 CLEAR LOGS</button>
+            <button class="btn-op btn-filter" style="padding: 10px 20px; font-size: 14px;" onclick="clearTerminal()">CLEAR LOGS</button>
         </header>
 
         <div class="dashboard-container">
@@ -50,19 +50,19 @@
                 <div class="panel-box operator-panel">
                     <h3>Manual Filter Override</h3>
                     <div class="filter-grid">
-                        <button class="btn-op btn-filter" onclick="setManualFilter('NORMAL')">🎨 Normal</button>
-                        <button class="btn-op btn-filter" onclick="setManualFilter('NOIR')">⚫ Noir</button>
-                        <button class="btn-op btn-filter" onclick="setManualFilter('FILM_II')">🎞️ Film II</button>
+                        <button class="btn-op btn-filter" onclick="setManualFilter('NORMAL')">Normal</button>
+                        <button class="btn-op btn-filter" onclick="setManualFilter('NOIR')">Noir</button>
+                        <button class="btn-op btn-filter" onclick="setManualFilter('FILM_II')">Film II</button>
                     </div>
 
                     <h3 style="margin-top: 5px;">Session Overrides</h3>
-                    <button id="btnForceStart" class="btn-op btn-force">📸 Force Start (Free Play)</button>
-                    <button class="btn-op btn-reset" onclick="resetBalance()">💸 Reset Customer Balance</button>
-                    <button id="btnAbort" class="btn-op btn-abort">🛑 Abort Session</button>
+                    <button id="btnForceStart" class="btn-op btn-force">Force Start</button>
+                    <button class="btn-op btn-reset" onclick="resetBalance()">Reset Balance</button>
+                    <button id="btnAbort" class="btn-op btn-abort">Abort Session</button>
                     
                     <h3 style="margin-top: 5px;">System Controls</h3>
-                    <button id="btnRestart" class="btn-op btn-restart" onclick="triggerSystemRestart()">🔄 Restart System Backend</button>
-                    <button id="btnTestAudio" class="btn-op btn-audio" onclick="toggleTestAudio()">🔊 Test Audio (Play)</button>
+                    <button id="btnRestart" class="btn-op btn-restart" onclick="triggerSystemRestart()">Restart System</button>
+                    <button id="btnTestAudio" class="btn-op btn-audio" onclick="toggleTestAudio()">Test Audio (Play)</button>
                 </div>
             </div>
         </div>
@@ -97,16 +97,16 @@
             if (countdownAudio.paused) {
                 countdownAudio.currentTime = 0;
                 countdownAudio.play().then(() => {
-                    btn.innerHTML = "⏹️ Stop Audio Test";
-                    appendLog("> 🔊 Audio test playing.");
+                    btn.innerHTML = "⏹Stop Audio Test";
+                    appendLog(">Audio test playing.");
                 }).catch(err => {
                     appendLog("ERROR: ❌ Audio blocked by browser policy.");
                 });
             } else {
                 countdownAudio.pause();
                 countdownAudio.currentTime = 0;
-                btn.innerHTML = "🔊 Test Audio (Play)";
-                appendLog("> 🔇 Audio test stopped by operator.");
+                btn.innerHTML = "Test Audio (Play)";
+                appendLog(">Audio test stopped by operator.");
             }
         }
 
@@ -214,7 +214,7 @@
         });
 
         function triggerSystemRestart() {
-            if (confirm("⚠️ Are you sure you want to completely reboot the backend system?")) {
+            if (confirm("⚠️ Are you sure you want to completely reboot the system?")) {
                 socket.emit('restart_system');
                 setTimeout(() => { location.reload(); }, 4000);
             }
