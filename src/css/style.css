@@ -551,4 +551,45 @@ body.monochrome-mode #live-preview {
     font-size: 14px;
     padding: 0;
 }
+/* =========================================
+   MONOCHROME DARK MODE (GLOBAL OVERRIDES)
+========================================= */
+
+/* Neutralize the main backgrounds */
+body.monochrome-mode {
+    background: #121212 !important; /* Strips out the red checkerboard */
+    color: #ffffff;
+}
+
+body.monochrome-mode .sys-sidebar {
+    background: #1a1a1a !important;
+    border-right: 1px solid #333;
+}
+
+/* Flatten the UI Cards */
+body.monochrome-mode .dashboard-container .panel-box,
+body.monochrome-mode .settings-card,
+body.monochrome-mode .workspace-header {
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid #333 !important;
+    box-shadow: none;
+}
+
+/* Make Buttons Grayscale */
+body.monochrome-mode .btn-op,
+body.monochrome-mode .btn-primary {
+    background-color: #333 !important;
+    color: #fff !important;
+    border: 1px solid #555 !important;
+}
+
+body.monochrome-mode .btn-op:hover,
+body.monochrome-mode .btn-primary:hover {
+    background-color: #555 !important;
+}
+
+/* Ensure Camera View Stays Untouched */
+body.monochrome-mode #webcam-preview {
+    border: 1px solid #333;
+}
 }

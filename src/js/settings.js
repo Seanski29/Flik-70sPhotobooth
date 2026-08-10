@@ -10,51 +10,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentPass = document.getElementById('current-password').value;
         const newPass = document.getElementById('new-password').value;
 
-        // Note: In production, send this to server.js via fetch or socket.io to validate
-        if (currentPass === "admin123") { // Placeholder validation
+        // Fetch current active password for validation
+        const savedPassword = localStorage.getItem('operator_password') || "admin123";
+
+        if (currentPass === savedPassword) { 
+            // SAVE THE NEW PASSWORD GLOBALLY
+            localStorage.setItem('operator_password', newPass);
+
             passwordError.style.display = 'none';
             passwordSuccess.style.display = 'block';
             passwordForm.reset();
+
+            // Hide success message after 3 seconds for clean UI
+            setTimeout(() => { passwordSuccess.style.display = 'none'; }, 3000);
         } else {
             passwordSuccess.style.display = 'none';
             passwordError.style.display = 'block';
         }
     });
 
-    // B. Volume Slider
-    const volumeSlider = document.getElementById('volume-slider');
-    const volumeDisplay = document.getElementById('volume-display');
-
-    volumeSlider.addEventListener('input', (e) => {
-        const volume = e.target.value;
-        volumeDisplay.textContent = `${volume}%`;
-        // Send volume command to backend
-        // io.emit('update_volume', volume);
-    });
-
-    // C. Change File Location
-    const browseBtn = document.getElementById('browse-btn');
-    const savePathInput = document.getElementById('save-path');
-
-    browseBtn.addEventListener('click', async () => {
-        // This requires Electron's dialog module in your main.js
-        // Example integration: const newPath = await window.electronAPI.selectFolder();
-        // if (newPath) savePathInput.value = newPath;
-        alert("Electron IPC required to open native Windows file explorer.");
-    });
-
-    // D. Monochrome Dark Mode
-    const themeToggle = document.getElementById('theme-toggle');
-
-    themeToggle.addEventListener('change', (e) => {
-        if (e.target.checked) {
-            document.body.classList.add('monochrome-mode');
-        } else {
-            document.body.classList.remove('monochrome-mode');
-        }
-    });
-
-    // E. Legal Modals
+    // B. Legal Modals
     const legalModal = document.getElementById('legal-modal');
     const modalTitle = document.getElementById('modal-title');
     const modalText = document.getElementById('modal-text');

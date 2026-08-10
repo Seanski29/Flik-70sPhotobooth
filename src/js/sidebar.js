@@ -1,3 +1,8 @@
+// GLOBAL THEME CHECKER: Runs immediately on every page to apply dark mode instantly
+if (localStorage.getItem('theme') === 'monochrome') {
+    document.body.classList.add('monochrome-mode');
+}
+
 const sidebarHTML = `
     <style>
         /* Scales up the sidebar elements */
@@ -78,55 +83,54 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
             
-            // Replace browser confirm with custom modal UI
-            const logoutLink = container.querySelector('.btn-logout');
-            const overlay = container.querySelector('.logout-modal-overlay');
-            const confirmBtn = container.querySelector('.logout-confirm');
-            const cancelBtn = container.querySelector('.logout-cancel');
-            let targetHref = null;
+        // Replace browser confirm with custom modal UI
+        const logoutLink = container.querySelector('.btn-logout');
+        const overlay = container.querySelector('.logout-modal-overlay');
+        const confirmBtn = container.querySelector('.logout-confirm');
+        const cancelBtn = container.querySelector('.logout-cancel');
+        let targetHref = null;
 
-            function showModal(href) {
-                targetHref = href;
-                overlay.style.display = 'flex';
-                overlay.setAttribute('aria-hidden', 'false');
-                // focus the cancel button for a safe default
-                cancelBtn && cancelBtn.focus();
-            }
+        function showModal(href) {
+            targetHref = href;
+            overlay.style.display = 'flex';
+            overlay.setAttribute('aria-hidden', 'false');
+            cancelBtn && cancelBtn.focus();
+        }
 
-            function hideModal() {
-                overlay.style.display = 'none';
-                overlay.setAttribute('aria-hidden', 'true');
-                targetHref = null;
-            }
+        function hideModal() {
+            overlay.style.display = 'none';
+            overlay.setAttribute('aria-hidden', 'true');
+            targetHref = null;
+        }
 
-            if (logoutLink) {
-                logoutLink.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const href = logoutLink.getAttribute('href') || 'login.html';
-                    showModal(href);
-                });
-            }
-
-            if (confirmBtn) {
-                confirmBtn.addEventListener('click', () => {
-                    if (targetHref) window.location.href = targetHref;
-                });
-            }
-
-            if (cancelBtn) {
-                cancelBtn.addEventListener('click', () => hideModal());
-            }
-
-            // Close when clicking outside the modal
-            if (overlay) {
-                overlay.addEventListener('click', (e) => {
-                    if (e.target === overlay) hideModal();
-                });
-            }
-
-            // Close on Escape key
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape' && overlay && overlay.style.display === 'flex') hideModal();
+        if (logoutLink) {
+            logoutLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                const href = logoutLink.getAttribute('href') || 'login.html';
+                showModal(href);
             });
+        }
+
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', () => {
+                if (targetHref) window.location.href = targetHref;
+            });
+        }
+
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => hideModal());
+        }
+
+        // Close when clicking outside the modal
+        if (overlay) {
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) hideModal();
+            });
+        }
+
+        // Close on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && overlay && overlay.style.display === 'flex') hideModal();
+        });
     }
 });
