@@ -62,49 +62,7 @@ function saveStats() {
 
 loadStats();
 
-app.get('/api/gallery', (req, res) => {
-    try {
-        const files = fs.readdirSync(masterFolder)
-            .filter(file => file.startsWith('collage_') && file.endsWith('.jpg'))
-            .map(file => {
-                const filePath = path.join(masterFolder, file);
-                const stats = fs.statSync(filePath);
-                return {
-                    name: file,
-                    url: `http://localhost:3001/archive/${file}`,
-                    timestamp: stats.mtime.getTime()
-                };
-            })
-            .sort((a, b) => b.timestamp - a.timestamp); 
-
-        res.json(files);
-    } catch (error) {
-        res.status(500).json({ error: "Failed to load gallery" });
-    }
-});
-
-app.delete('/api/gallery/:filename', (req, res) => {
-    const filename = req.params.filename;
-    
-    if (!filename.startsWith('collage_') || !filename.endsWith('.jpg')) {
-        return res.status(403).json({ error: "Invalid file type" });
-    }
-
-    const filePath = path.join(masterFolder, filename);
-
-    try {
-        if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath); 
-            addLog(` Permanently deleted archive: ${filename}`);
-            res.json({ success: true, message: "File deleted successfully" });
-        } else {
-            res.status(404).json({ error: "File not found" });
-        }
-    } catch (error) {
-        res.status(500).json({ error: "Failed to delete file" });
-    }
-});
-
+// --- STATE VARIABLES ---
 let currentSessionPhotos = [];
 let activeFilter = 'NORMAL'; 
 let lockedSessionFilter = 'NORMAL'; 
@@ -116,13 +74,28 @@ const SESSION_COST = 200;
 let arduinoTotal = 0; 
 let availableBalance = 0; 
 
+// NEW: Adjustable Countdown
+let countdownTimerStart = 10; 
+
 let sequenceInterval;
 let sequenceTimeout;
 let normalDebounce; 
 
-// Make port global so socket.io commands can access it
 let port; 
 let parser;
+
+// --- HARDWARE HELPER FUNCTIONS ---
+
+// NEW: Controls the Red LED based on balance
+function evaluateLEDState() {
+    if (sessionInProgress) return; 
+    
+    if (availableBalance >= SESSION_COST) {
+        if (port && arduinoConnected) port.write("READY_TO_START\n");
+    } else {
+        if (port && arduinoConnected) port.write("IDLE\n"); 
+    }
+}
 
 function printCollage(imagePath) {
     addLog(`🖨️ Preparing to print: ${path.basename(imagePath)}`);
@@ -160,6 +133,7 @@ function capturePhoto() {
             sessionInProgress = false;
             currentSessionPhotos = [];
             io.emit('hardware_update', { type: 'status', value: 'IDLE' });
+            evaluateLEDState(); // Check LED on abort
             return;
         }
         
@@ -183,12 +157,21 @@ function capturePhoto() {
                     
                     printCollage(collagePath);
                     
+                    // --- GREEN LED PRINTER LOGIC ---
+                    if (port && arduinoConnected) port.write("GREEN_ON\n");
+                    
+                    setTimeout(() => {
+                        if (port && arduinoConnected) port.write("GREEN_OFF\n");
+                    }, 10000); // Wait 10 seconds before turning off
+                    // -------------------------------
+                    
                 } catch (err) {
                     addLog(`ERROR: Sharp failed to stitch collage.`);
                     console.error(err);
                 } finally {
                     currentSessionPhotos = []; 
                     sessionInProgress = false; 
+                    evaluateLEDState(); // Check if they still have balance left for another session!
                 }
             }, 3000); 
         }
@@ -235,11 +218,15 @@ async function startSessionLoop(isFreePlay = false) {
     
     io.emit('audit_update', { revenue: totalRevenue, sessions: totalSessions });
     io.emit('hardware_update', { type: 'trigger', value: 'START' });
+    
+    // Tell Arduino the session has started (Turns off Red LED)
+    if (port && arduinoConnected) port.write("SESSION_START\n");
 
     let photoCount = 0;
 
     function runPhotoCycle() {
-        let prepTime = 10;
+        // Uses the dynamic adjustable timer
+        let prepTime = countdownTimerStart;
         addLog(`> ⏳ GETTING READY FOR PHOTO ${photoCount + 1}...`);
         
         io.emit('countdown_tick', prepTime); 
@@ -265,7 +252,7 @@ async function startSessionLoop(isFreePlay = false) {
     runPhotoCycle();
 }
 
-// --- NEW: AUTO-DETECT ARDUINO COM PORT ---
+// --- ARDUINO CONNECTION ---
 async function connectToHardware() {
     try {
         const ports = await SerialPort.list();
@@ -309,6 +296,7 @@ async function connectToHardware() {
             } else {
                 arduinoConnected = true;
                 addLog(`>  System linked to Arduino on ${comPath}`);
+                evaluateLEDState(); // Initial check on connection
             }
         });
 
@@ -366,6 +354,8 @@ async function connectToHardware() {
                     io.emit('pulse_received'); 
                     io.emit('hardware_update', { type: 'balance', value: availableBalance });
                     addLog(`>  Bill Detected: Added ${newlyInserted} PHP.`);
+                    
+                    evaluateLEDState(); // Check if Red LED should turn on!
                 }
             }
         });
@@ -378,6 +368,7 @@ async function connectToHardware() {
 
 connectToHardware();
 
+// --- SOCKET.IO COMMUNICATION ---
 io.on('connection', (socket) => {
     
     socket.on('request_sync', () => {
@@ -385,10 +376,12 @@ io.on('connection', (socket) => {
         socket.emit('hardware_update', { type: 'balance', value: availableBalance }); 
         socket.emit('hardware_update', { type: 'filter', value: `FILTER: ${activeFilter}` }); 
         socket.emit('terminal_history', terminalHistory);
+        socket.emit('sync_timer', countdownTimerStart); // Sync the slider
     });
 
     socket.on('session_complete', () => { 
-        if(port && arduinoConnected) port.write("SESSION_COMPLETE\n"); 
+        // When the frontend overlay closes, it sends this command.
+        evaluateLEDState(); // Resets Arduino to IDLE or READY_TO_START
     });
     
     socket.on('clear_terminal', () => {
@@ -405,6 +398,23 @@ io.on('connection', (socket) => {
             addLog(`>  ACTION DENIED: Cannot change filter while session is active.`);
         }
     });
+
+    // NEW: Receive timer update from frontend slider
+    socket.on('update_countdown', (val) => {
+        countdownTimerStart = parseInt(val);
+        addLog(`>  TIMER UPDATED: Countdown set to ${countdownTimerStart} seconds.`);
+        io.emit('sync_timer', countdownTimerStart);
+    });
+
+    // NEW: Manual LED override
+    socket.on('test_led', (cmd) => {
+        if (port && arduinoConnected) {
+            port.write(cmd + "\n");
+            addLog(`>  HARDWARE TEST: Sent ${cmd} to Arduino.`);
+        } else {
+            addLog(`ERROR: Cannot test LED. Arduino not connected.`);
+        }
+    });
     
     socket.on('force_start', () => {
         addLog(`>  FORCE START INITIALIZED`);
@@ -417,13 +427,14 @@ io.on('connection', (socket) => {
         clearTimeout(sequenceTimeout);
         sessionInProgress = false;
         currentSessionPhotos = [];
-        if(port && arduinoConnected) port.write("SESSION_COMPLETE\n");
+        evaluateLEDState(); // Resets Arduino LED state
         io.emit('hardware_update', { type: 'status', value: 'IDLE' });
     });
 
     socket.on('reset_balance', () => {
         availableBalance = 0;
         io.emit('hardware_update', { type: 'balance', value: availableBalance });
+        evaluateLEDState(); // Ensure Red LED turns off
         addLog(">  Operator reset customer balance to 0.");
     });
     
@@ -435,15 +446,6 @@ io.on('connection', (socket) => {
         addLog(">  Vault stats permanently reset by operator.");
     });
     
-    socket.on('print_photo', (filename) => {
-        const filePath = path.join(masterFolder, filename);
-        if (fs.existsSync(filePath)) {
-            printCollage(filePath);
-        } else {
-            addLog(`ERROR: File not found for printing: ${filename}`);
-        }
-    });
-
     socket.on('restart_system', () => {
         addLog(`>  OPERATOR COMMAND: SYSTEM REBOOTING IN 3 SECONDS...`);
         setTimeout(() => {
@@ -457,8 +459,50 @@ io.on('connection', (socket) => {
     });
 });
 
+// --- FILE CHECKER & COLLAGE GENERATOR (Rest of code remains unchanged) ---
 
-// --- FILE CHECKER & COLLAGE GENERATOR ---
+app.get('/api/gallery', (req, res) => {
+    try {
+        const files = fs.readdirSync(masterFolder)
+            .filter(file => file.startsWith('collage_') && file.endsWith('.jpg'))
+            .map(file => {
+                const filePath = path.join(masterFolder, file);
+                const stats = fs.statSync(filePath);
+                return {
+                    name: file,
+                    url: `http://localhost:3001/archive/${file}`,
+                    timestamp: stats.mtime.getTime()
+                };
+            })
+            .sort((a, b) => b.timestamp - a.timestamp); 
+
+        res.json(files);
+    } catch (error) {
+        res.status(500).json({ error: "Failed to load gallery" });
+    }
+});
+
+app.delete('/api/gallery/:filename', (req, res) => {
+    const filename = req.params.filename;
+    
+    if (!filename.startsWith('collage_') || !filename.endsWith('.jpg')) {
+        return res.status(403).json({ error: "Invalid file type" });
+    }
+
+    const filePath = path.join(masterFolder, filename);
+
+    try {
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath); 
+            addLog(` Permanently deleted archive: ${filename}`);
+            res.json({ success: true, message: "File deleted successfully" });
+        } else {
+            res.status(404).json({ error: "File not found" });
+        }
+    } catch (error) {
+        res.status(500).json({ error: "Failed to delete file" });
+    }
+});
 
 function waitForFile(filePath, timeoutMs = 5000) {
     return new Promise((resolve, reject) => {

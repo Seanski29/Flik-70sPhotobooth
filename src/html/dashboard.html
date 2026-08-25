@@ -6,6 +6,32 @@
     <title>FLIK | Master Dashboard</title>
     <link rel="stylesheet" href="../css/style.css">
     <script src="http://localhost:3001/socket.io/socket.io.js"></script>
+    <style>
+        /* Small style for the timer slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+            margin-top: 5px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: #ef4444;
+            cursor: pointer;
+            margin-top: -6px;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #555;
+            border-radius: 3px;
+        }
+        .btn-test { padding: 10px; font-size: 13px; font-weight: bold; border: none; border-radius: 4px; color: white; cursor: pointer; transition: 0.2s ease; }
+    </style>
 </head>
 <body class="app-layout">
 
@@ -54,6 +80,20 @@
                         <button class="btn-op btn-filter" onclick="setManualFilter('NOIR')">Noir</button>
                         <button class="btn-op btn-filter" onclick="setManualFilter('FILM_II')">Film II</button>
                     </div>
+                    
+                    <!-- Timer Slider -->
+                    <h3 style="margin-top: 5px;">Settings</h3>
+                    <div class="metric" style="flex-direction: column; align-items: flex-start; gap: 0;">
+                        <label style="font-size: 14px; font-weight: bold; color: #ccc;">Photo Countdown: <span id="timerLabel" style="color:#ef4444;">10</span>s</label>
+                        <input type="range" id="timerSlider" min="3" max="15" value="10">
+                    </div>
+
+                    <!-- UPDATED: Hardware Test Buttons (Toggle) -->
+                    <h3 style="margin-top: 5px;">Hardware Test</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px;">
+                        <button id="btnTestRed" class="btn-test" style="background: #7f1d1d;" onclick="toggleRedLED()">Red LED: OFF</button>
+                        <button id="btnTestGreen" class="btn-test" style="background: #14532d;" onclick="toggleGreenLED()">Green LED: OFF</button>
+                    </div>
 
                     <h3 style="margin-top: 5px;">Session Overrides</h3>
                     <button id="btnForceStart" class="btn-op btn-force">Force Start</button>
@@ -73,6 +113,8 @@
         const socket = io('http://localhost:3001');
         const terminalBox = document.getElementById('terminalBox');
         const liveView = document.getElementById('webcam-preview');
+        const timerSlider = document.getElementById('timerSlider');
+        const timerLabel = document.getElementById('timerLabel');
         
         const countdownAudio = new Audio('../../assets/10_sec_countdown.mp3');
         let overlayTimeout; 
@@ -117,9 +159,24 @@
             historyArray.forEach(log => appendLog(log));
         });
 
+        // Dynamic Slider Updates
+        timerSlider.addEventListener('input', (e) => {
+            timerLabel.innerText = e.target.value;
+        });
+        timerSlider.addEventListener('change', (e) => {
+            socket.emit('update_countdown', e.target.value);
+        });
+        socket.on('sync_timer', (val) => {
+            timerSlider.value = val;
+            timerLabel.innerText = val;
+        });
+        
+        // Audio syncs based on slider
         socket.on('countdown_tick', (second) => {
-            if (second === 10) {
-                countdownAudio.currentTime = 0; 
+            let maxAudioSec = Math.min(timerSlider.value, 10); 
+            
+            if (second === maxAudioSec) {
+                countdownAudio.currentTime = 10 - maxAudioSec; 
                 countdownAudio.play().catch(err => {});
             }
         });
@@ -204,6 +261,37 @@
             applyFilterToPreview(filterType); 
         }
 
+        // --- NEW: Toggle LED Logic ---
+        let isRedTestOn = false;
+        function toggleRedLED() {
+            isRedTestOn = !isRedTestOn;
+            const btn = document.getElementById('btnTestRed');
+            if (isRedTestOn) {
+                socket.emit('test_led', 'READY_TO_START');
+                btn.style.background = '#ef4444'; // Bright Red
+                btn.innerText = 'Red LED: ON';
+            } else {
+                socket.emit('test_led', 'IDLE');
+                btn.style.background = '#7f1d1d'; // Dark Red
+                btn.innerText = 'Red LED: OFF';
+            }
+        }
+
+        let isGreenTestOn = false;
+        function toggleGreenLED() {
+            isGreenTestOn = !isGreenTestOn;
+            const btn = document.getElementById('btnTestGreen');
+            if (isGreenTestOn) {
+                socket.emit('test_led', 'GREEN_ON');
+                btn.style.background = '#22c55e'; // Bright Green
+                btn.innerText = 'Green LED: ON';
+            } else {
+                socket.emit('test_led', 'GREEN_OFF');
+                btn.style.background = '#14532d'; // Dark Green
+                btn.innerText = 'Green LED: OFF';
+            }
+        }
+
         document.getElementById('btnForceStart').addEventListener('click', () => {
             if (document.getElementById('sessionDisplay').innerText !== "CAMERA ACTIVE") { socket.emit('force_start'); }
         });
@@ -211,6 +299,14 @@
         document.getElementById('btnAbort').addEventListener('click', () => {
             socket.emit('abort_session');
             document.getElementById('resultOverlay').style.display = 'none'; 
+            
+            // Reset toggle button states if aborted
+            isRedTestOn = false;
+            document.getElementById('btnTestRed').style.background = '#7f1d1d';
+            document.getElementById('btnTestRed').innerText = 'Red LED: OFF';
+            isGreenTestOn = false;
+            document.getElementById('btnTestGreen').style.background = '#14532d';
+            document.getElementById('btnTestGreen').innerText = 'Green LED: OFF';
         });
 
         function triggerSystemRestart() {
