@@ -7,29 +7,9 @@
     <link rel="stylesheet" href="../css/style.css">
     <script src="http://localhost:3001/socket.io/socket.io.js"></script>
     <style>
-        /* Small style for the timer slider */
-        input[type=range] {
-            -webkit-appearance: none;
-            width: 100%;
-            background: transparent;
-            margin-top: 5px;
-        }
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            height: 18px;
-            width: 18px;
-            border-radius: 50%;
-            background: #ef4444;
-            cursor: pointer;
-            margin-top: -6px;
-        }
-        input[type=range]::-webkit-slider-runnable-track {
-            width: 100%;
-            height: 6px;
-            cursor: pointer;
-            background: #555;
-            border-radius: 3px;
-        }
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; margin-top: 5px; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%; background: #ef4444; cursor: pointer; margin-top: -6px; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: #555; border-radius: 3px; }
         .btn-test { padding: 10px; font-size: 13px; font-weight: bold; border: none; border-radius: 4px; color: white; cursor: pointer; transition: 0.2s ease; }
     </style>
 </head>
@@ -53,8 +33,6 @@
         </header>
 
         <div class="dashboard-container">
-            
-            <!-- CLEAN TERMINAL -->
             <div class="terminal-container">
                 <div class="terminal" id="terminalBox">
                     <div class="log-entry">> Initializing System UI...</div>
@@ -81,17 +59,18 @@
                         <button class="btn-op btn-filter" onclick="setManualFilter('FILM_II')">Film II</button>
                     </div>
                     
-                    <!-- Timer Slider -->
                     <h3 style="margin-top: 5px;">Settings</h3>
                     <div class="metric" style="flex-direction: column; align-items: flex-start; gap: 0;">
                         <label style="font-size: 14px; font-weight: bold; color: #ccc;">Photo Countdown: <span id="timerLabel" style="color:#ef4444;">10</span>s</label>
-                        <input type="range" id="timerSlider" min="3" max="15" value="10">
+                        <input type="range" id="timerSlider" min="3" max="10" value="10">
                     </div>
 
-                    <!-- UPDATED: Hardware Test Buttons (Toggle) -->
-                    <h3 style="margin-top: 5px;">Hardware Test</h3>
+                    <h3 style="margin-top: 5px;">Audio & Hardware Tests</h3>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px;">
-                        <button id="btnTestRed" class="btn-test" style="background: #7f1d1d;" onclick="toggleRedLED()">Red LED: OFF</button>
+                        <button id="btnTestAudio" class="btn-test" style="background: #3b82f6;" onclick="toggleTestAudio()">Test Countdown 🔊</button>
+                        <button id="btnTestBGAudio" class="btn-test" style="background: #8b5cf6;" onclick="toggleBGAudio()">Test BG Music 🎵</button>
+                        
+                        <button id="btnTestRed" class="btn-test" style="background: #7f1d1d;" onclick="toggleRedLED()">Arcade Red: OFF</button>
                         <button id="btnTestGreen" class="btn-test" style="background: #14532d;" onclick="toggleGreenLED()">Green LED: OFF</button>
                     </div>
 
@@ -102,7 +81,6 @@
                     
                     <h3 style="margin-top: 5px;">System Controls</h3>
                     <button id="btnRestart" class="btn-op btn-restart" onclick="triggerSystemRestart()">Restart System</button>
-                    <button id="btnTestAudio" class="btn-op btn-audio" onclick="toggleTestAudio()">Test Audio (Play)</button>
                 </div>
             </div>
         </div>
@@ -116,39 +94,61 @@
         const timerSlider = document.getElementById('timerSlider');
         const timerLabel = document.getElementById('timerLabel');
         
-        const countdownAudio = new Audio('../../assets/10_sec_countdown.mp3');
+        const countdownAudio = new Audio('../../assets/10_sc.mp3');
+        const bgAudio = new Audio('../../assets/bg_music.mp3');
+        bgAudio.loop = true; // Loops until printer starts
+
         let overlayTimeout; 
         let audioUnlocked = false;
 
         document.body.addEventListener('click', () => {
             if (!audioUnlocked) {
                 countdownAudio.play().then(() => {
-                    countdownAudio.pause();
-                    countdownAudio.currentTime = 0;
-                    audioUnlocked = true;
+                    countdownAudio.pause(); countdownAudio.currentTime = 0;
+                    bgAudio.play().then(() => {
+                        bgAudio.pause(); bgAudio.currentTime = 0;
+                        audioUnlocked = true;
+                    });
                 }).catch(err => {});
             }
         }, { once: true });
 
-        countdownAudio.onended = () => {
-            document.getElementById('btnTestAudio').innerHTML = "🔊 Test Audio (Play)";
-        };
+        countdownAudio.onended = () => { document.getElementById('btnTestAudio').innerHTML = "Test Countdown 🔊"; };
 
         function toggleTestAudio() {
             const btn = document.getElementById('btnTestAudio');
             if (countdownAudio.paused) {
                 countdownAudio.currentTime = 0;
                 countdownAudio.play().then(() => {
-                    btn.innerHTML = "⏹Stop Audio Test";
-                    appendLog(">Audio test playing.");
-                }).catch(err => {
-                    appendLog("ERROR: ❌ Audio blocked by browser policy.");
-                });
+                    btn.innerHTML = "⏹ Stop Countdown";
+                    appendLog("> Audio test playing.");
+                }).catch(err => appendLog("ERROR: ❌ Audio blocked."));
             } else {
-                countdownAudio.pause();
-                countdownAudio.currentTime = 0;
-                btn.innerHTML = "Test Audio (Play)";
-                appendLog(">Audio test stopped by operator.");
+                countdownAudio.pause(); countdownAudio.currentTime = 0;
+                btn.innerHTML = "Test Countdown 🔊";
+            }
+        }
+
+        // BG Music Socket Listener
+        socket.on('bg_music_command', (cmd) => {
+            if (cmd === 'PLAY') {
+                bgAudio.play().catch(e => console.log(e));
+            } else if (cmd === 'STOP') {
+                bgAudio.pause();
+                bgAudio.currentTime = 0;
+            }
+        });
+
+        // BG Music Manual Test Button
+        function toggleBGAudio() {
+            const btn = document.getElementById('btnTestBGAudio');
+            if (bgAudio.paused) {
+                bgAudio.play().then(() => {
+                    btn.innerHTML = "⏹ Stop BG Music";
+                }).catch(err => appendLog("ERROR: ❌ BG Audio blocked."));
+            } else {
+                bgAudio.pause(); bgAudio.currentTime = 0;
+                btn.innerHTML = "Test BG Music 🎵";
             }
         }
 
@@ -159,22 +159,15 @@
             historyArray.forEach(log => appendLog(log));
         });
 
-        // Dynamic Slider Updates
-        timerSlider.addEventListener('input', (e) => {
-            timerLabel.innerText = e.target.value;
-        });
-        timerSlider.addEventListener('change', (e) => {
-            socket.emit('update_countdown', e.target.value);
-        });
+        timerSlider.addEventListener('input', (e) => { timerLabel.innerText = e.target.value; });
+        timerSlider.addEventListener('change', (e) => { socket.emit('update_countdown', e.target.value); });
         socket.on('sync_timer', (val) => {
             timerSlider.value = val;
             timerLabel.innerText = val;
         });
         
-        // Audio syncs based on slider
         socket.on('countdown_tick', (second) => {
             let maxAudioSec = Math.min(timerSlider.value, 10); 
-            
             if (second === maxAudioSec) {
                 countdownAudio.currentTime = 10 - maxAudioSec; 
                 countdownAudio.play().catch(err => {});
@@ -186,7 +179,7 @@
         function appendLog(data) {
             const logElement = document.createElement('div');
             logElement.classList.add('log-entry');
-            if (data.includes('INSUFFICIENT_FUNDS') || data.includes('ABORTED') || data.includes('ERROR')) logElement.classList.add('log-error');
+            if (data.includes('INSUFFICIENT_FUNDS') || data.includes('WARNING') || data.includes('ERROR')) logElement.classList.add('log-error');
             if (data.includes('BALANCE') || data.includes('Loaded historical') || data.includes('reset customer balance')) logElement.classList.add('log-money');
             
             logElement.textContent = data.startsWith('>') ? data : `> ${data}`;
@@ -195,13 +188,9 @@
         }
 
         socket.on('terminal_log', (data) => { appendLog(data); });
-
         function clearTerminal() { socket.emit('clear_terminal'); }
-
         function resetBalance() {
-            if(confirm("Are you sure you want to reset the current customer's balance to 0 PHP?")) {
-                socket.emit('reset_balance');
-            }
+            if(confirm("Are you sure you want to reset the current customer's balance to 0 PHP?")) socket.emit('reset_balance');
         }
 
         function applyFilterToPreview(filterName) {
@@ -210,15 +199,10 @@
             if (cleanName === 'FILTER_2' || cleanName === 'VINTAGE') cleanName = 'FILM_II';
 
             document.getElementById('filterDisplay').innerText = cleanName;
-            
             liveView.className = ''; 
-            if (cleanName === 'NOIR') {
-                liveView.classList.add('filter-NOIR');
-            } else if (cleanName === 'FILM_II') {
-                liveView.classList.add('filter-FILM-II');
-            } else {
-                liveView.classList.add('filter-NORMAL');
-            }
+            if (cleanName === 'NOIR') liveView.classList.add('filter-NOIR');
+            else if (cleanName === 'FILM_II') liveView.classList.add('filter-FILM-II');
+            else liveView.classList.add('filter-NORMAL');
         }
 
         socket.on('hardware_update', (data) => {
@@ -261,19 +245,18 @@
             applyFilterToPreview(filterType); 
         }
 
-        // --- NEW: Toggle LED Logic ---
         let isRedTestOn = false;
         function toggleRedLED() {
             isRedTestOn = !isRedTestOn;
             const btn = document.getElementById('btnTestRed');
             if (isRedTestOn) {
-                socket.emit('test_led', 'READY_TO_START');
-                btn.style.background = '#ef4444'; // Bright Red
-                btn.innerText = 'Red LED: ON';
+                socket.emit('test_led', 'READY_TO_START'); // Arcade ON, Status OFF
+                btn.style.background = '#ef4444'; 
+                btn.innerText = 'Arcade Red: ON';
             } else {
-                socket.emit('test_led', 'IDLE');
-                btn.style.background = '#7f1d1d'; // Dark Red
-                btn.innerText = 'Red LED: OFF';
+                socket.emit('test_led', 'IDLE'); // Arcade OFF, Status ON
+                btn.style.background = '#7f1d1d'; 
+                btn.innerText = 'Arcade Red: OFF';
             }
         }
 
@@ -283,11 +266,11 @@
             const btn = document.getElementById('btnTestGreen');
             if (isGreenTestOn) {
                 socket.emit('test_led', 'GREEN_ON');
-                btn.style.background = '#22c55e'; // Bright Green
+                btn.style.background = '#22c55e'; 
                 btn.innerText = 'Green LED: ON';
             } else {
                 socket.emit('test_led', 'GREEN_OFF');
-                btn.style.background = '#14532d'; // Dark Green
+                btn.style.background = '#14532d'; 
                 btn.innerText = 'Green LED: OFF';
             }
         }
@@ -299,11 +282,9 @@
         document.getElementById('btnAbort').addEventListener('click', () => {
             socket.emit('abort_session');
             document.getElementById('resultOverlay').style.display = 'none'; 
-            
-            // Reset toggle button states if aborted
             isRedTestOn = false;
             document.getElementById('btnTestRed').style.background = '#7f1d1d';
-            document.getElementById('btnTestRed').innerText = 'Red LED: OFF';
+            document.getElementById('btnTestRed').innerText = 'Arcade Red: OFF';
             isGreenTestOn = false;
             document.getElementById('btnTestGreen').style.background = '#14532d';
             document.getElementById('btnTestGreen').innerText = 'Green LED: OFF';

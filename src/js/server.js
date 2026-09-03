@@ -35,7 +35,6 @@ function addLog(msg) {
 
 // --- PERSISTENT DATABASE SYSTEM ---
 const statsFilePath = path.join(__dirname, 'stats.json');
-
 let totalRevenue = 0;
 let totalSessions = 0;
 
@@ -51,7 +50,6 @@ function loadStats() {
         addLog(">  Failed to read stats.json. Starting fresh.");
     }
 }
-
 function saveStats() {
     try {
         fs.writeFileSync(statsFilePath, JSON.stringify({ totalRevenue, totalSessions }));
@@ -59,7 +57,6 @@ function saveStats() {
         console.error("Failed to save stats:", err);
     }
 }
-
 loadStats();
 
 // --- STATE VARIABLES ---
@@ -69,12 +66,12 @@ let lockedSessionFilter = 'NORMAL';
 let sessionInProgress = false;
 
 let arduinoConnected = false; 
+let isConnecting = false; // Prevents overlapping connection attempts
 const SESSION_COST = 200; 
 
 let arduinoTotal = 0; 
 let availableBalance = 0; 
 
-// NEW: Adjustable Countdown
 let countdownTimerStart = 10; 
 
 let sequenceInterval;
@@ -86,14 +83,29 @@ let parser;
 
 // --- HARDWARE HELPER FUNCTIONS ---
 
-// NEW: Controls the Red LED based on balance
+// Check System Printer on Boot
+function verifyPrinter() {
+    exec('powershell -Command "Get-CimInstance Win32_Printer -Filter \\"Default=True\\" | Select-Object -ExpandProperty Name"', (err, stdout) => {
+        const printerName = stdout.trim();
+        if (!err && printerName) {
+            addLog(`> 🖨️ PRINTER DETECTED: Default set to [${printerName}]`);
+        } else {
+            addLog(`> ⚠️ WARNING: No default Windows printer detected!`);
+        }
+    });
+}
+verifyPrinter();
+
+// Evaluates Balance for LEDs and BG Music
 function evaluateLEDState() {
     if (sessionInProgress) return; 
     
     if (availableBalance >= SESSION_COST) {
         if (port && arduinoConnected) port.write("READY_TO_START\n");
+        io.emit('bg_music_command', 'PLAY');
     } else {
         if (port && arduinoConnected) port.write("IDLE\n"); 
+        io.emit('bg_music_command', 'STOP');
     }
 }
 
@@ -108,14 +120,9 @@ function printCollage(imagePath) {
 function checkCameraConnection() {
     return new Promise((resolve) => {
         http.get('http://127.0.0.1:5513/liveview.jpg', (res) => {
-            if (res.statusCode === 200) {
-                resolve(true);
-            } else {
-                resolve(false);
-            }
-        }).on('error', (e) => {
-            resolve(false); 
-        });
+            if (res.statusCode === 200) resolve(true);
+            else resolve(false);
+        }).on('error', () => resolve(false));
     });
 }
 
@@ -133,7 +140,7 @@ function capturePhoto() {
             sessionInProgress = false;
             currentSessionPhotos = [];
             io.emit('hardware_update', { type: 'status', value: 'IDLE' });
-            evaluateLEDState(); // Check LED on abort
+            evaluateLEDState(); 
             return;
         }
         
@@ -155,15 +162,15 @@ function capturePhoto() {
                     io.emit('collage_ready', imageUrl);
                     addLog(`SUCCESS: Collage generated and sent to frontend.`);
                     
+                    // Stop BG Music right as printer fires
+                    io.emit('bg_music_command', 'STOP');
                     printCollage(collagePath);
                     
-                    // --- GREEN LED PRINTER LOGIC ---
                     if (port && arduinoConnected) port.write("GREEN_ON\n");
                     
                     setTimeout(() => {
                         if (port && arduinoConnected) port.write("GREEN_OFF\n");
-                    }, 10000); // Wait 10 seconds before turning off
-                    // -------------------------------
+                    }, 10000); 
                     
                 } catch (err) {
                     addLog(`ERROR: Sharp failed to stitch collage.`);
@@ -171,7 +178,7 @@ function capturePhoto() {
                 } finally {
                     currentSessionPhotos = []; 
                     sessionInProgress = false; 
-                    evaluateLEDState(); // Check if they still have balance left for another session!
+                    evaluateLEDState(); 
                 }
             }, 3000); 
         }
@@ -185,7 +192,6 @@ async function startSessionLoop(isFreePlay = false) {
     }
     
     sessionInProgress = true; 
-
     addLog(">  Running  Diagnostics...");
 
     if (!arduinoConnected) {
@@ -219,13 +225,12 @@ async function startSessionLoop(isFreePlay = false) {
     io.emit('audit_update', { revenue: totalRevenue, sessions: totalSessions });
     io.emit('hardware_update', { type: 'trigger', value: 'START' });
     
-    // Tell Arduino the session has started (Turns off Red LED)
     if (port && arduinoConnected) port.write("SESSION_START\n");
+    io.emit('bg_music_command', 'STOP'); // Stop music immediately if starting
 
     let photoCount = 0;
 
     function runPhotoCycle() {
-        // Uses the dynamic adjustable timer
         let prepTime = countdownTimerStart;
         addLog(`> ⏳ GETTING READY FOR PHOTO ${photoCount + 1}...`);
         
@@ -252,8 +257,9 @@ async function startSessionLoop(isFreePlay = false) {
     runPhotoCycle();
 }
 
-// --- ARDUINO CONNECTION ---
+// --- BULLETPROOF ARDUINO AUTO-RECONNECT ---
 async function connectToHardware() {
+    isConnecting = true;
     try {
         const ports = await SerialPort.list();
         
@@ -262,52 +268,48 @@ async function connectToHardware() {
             (p.vendorId && (p.vendorId.toUpperCase() === '2341' || p.vendorId.toUpperCase() === '1A86'))
         );
 
-        let comPath = '';
-
-        if (targetPort) {
-            comPath = targetPort.path;
-        } else {
-            const fallbackPort = ports.find(p => p.vendorId);
-            if (fallbackPort) {
-                comPath = fallbackPort.path;
-            } else {
-                addLog('ERROR: ❌ No USB hardware detected! Please plug in the Arduino.');
-                return; 
-            }
+        if (!targetPort) {
+            isConnecting = false;
+            return; // Fail silently so the interval can keep checking without spamming logs
         }
 
-        port = new SerialPort({ path: comPath, baudRate: 115200, autoOpen: false });
+        port = new SerialPort({ path: targetPort.path, baudRate: 115200, autoOpen: false });
         parser = port.pipe(new ReadlineParser({ delimiter: '\r\n' }));
 
         port.on('error', (err) => {
+            if (arduinoConnected) addLog(`ERROR: Arduino connection lost!`);
             arduinoConnected = false;
-            addLog(`ERROR:  Arduino connection lost!`);
+            isConnecting = false;
         });
 
         port.on('close', () => {
+            if (arduinoConnected) addLog(`ERROR: Arduino unplugged!`);
             arduinoConnected = false;
-            addLog(`ERROR:  Arduino unplugged!`);
+            isConnecting = false;
         });
 
         port.open((err) => {
+            isConnecting = false;
             if (err) {
                 arduinoConnected = false;
-                addLog(`ERROR:  Could not find Arduino on ${comPath}.`);
             } else {
                 arduinoConnected = true;
-                addLog(`>  System linked to Arduino on ${comPath}`);
-                evaluateLEDState(); // Initial check on connection
+                addLog(`>  System linked to Arduino on ${targetPort.path}`);
+                
+                // Toggle DTR to force board reboot on connect (mimics IDE reset)
+                port.set({ dtr: false }, () => {
+                    setTimeout(() => port.set({ dtr: true }), 50);
+                });
+                
+                setTimeout(evaluateLEDState, 1500); // Check state after board wakes up
             }
         });
 
         parser.on('data', (data) => {
             let cleanData = data.trim();
 
-            if (cleanData.includes('FILTER_1')) {
-                cleanData = 'FILTER: NOIR';
-            } else if (cleanData.includes('FILTER_2')) {
-                cleanData = 'FILTER: FILM_II';
-            }
+            if (cleanData.includes('FILTER_1')) cleanData = 'FILTER: NOIR';
+            else if (cleanData.includes('FILTER_2')) cleanData = 'FILTER: FILM_II';
 
             if (cleanData.includes('FILTER')) {
                 const incomingFilter = cleanData.replace('FILTER:', '').trim();
@@ -355,18 +357,21 @@ async function connectToHardware() {
                     io.emit('hardware_update', { type: 'balance', value: availableBalance });
                     addLog(`>  Bill Detected: Added ${newlyInserted} PHP.`);
                     
-                    evaluateLEDState(); // Check if Red LED should turn on!
+                    evaluateLEDState(); 
                 }
             }
         });
-
     } catch (err) {
-        addLog('ERROR: Failed to scan COM ports.');
-        console.error(err);
+        isConnecting = false;
     }
 }
 
-connectToHardware();
+// Heartbeat Loop: Scans for Arduino every 3 seconds if disconnected
+setInterval(() => {
+    if (!arduinoConnected && !isConnecting) {
+        connectToHardware();
+    }
+}, 3000);
 
 // --- SOCKET.IO COMMUNICATION ---
 io.on('connection', (socket) => {
@@ -376,12 +381,11 @@ io.on('connection', (socket) => {
         socket.emit('hardware_update', { type: 'balance', value: availableBalance }); 
         socket.emit('hardware_update', { type: 'filter', value: `FILTER: ${activeFilter}` }); 
         socket.emit('terminal_history', terminalHistory);
-        socket.emit('sync_timer', countdownTimerStart); // Sync the slider
+        socket.emit('sync_timer', countdownTimerStart); 
     });
 
     socket.on('session_complete', () => { 
-        // When the frontend overlay closes, it sends this command.
-        evaluateLEDState(); // Resets Arduino to IDLE or READY_TO_START
+        evaluateLEDState(); 
     });
     
     socket.on('clear_terminal', () => {
@@ -394,19 +398,15 @@ io.on('connection', (socket) => {
             activeFilter = filterName;
             io.emit('hardware_update', { type: 'filter', value: `FILTER: ${filterName}` });
             addLog(`>  OVERRIDE: Filter set to ${filterName}`);
-        } else {
-            addLog(`>  ACTION DENIED: Cannot change filter while session is active.`);
         }
     });
 
-    // NEW: Receive timer update from frontend slider
     socket.on('update_countdown', (val) => {
         countdownTimerStart = parseInt(val);
         addLog(`>  TIMER UPDATED: Countdown set to ${countdownTimerStart} seconds.`);
         io.emit('sync_timer', countdownTimerStart);
     });
 
-    // NEW: Manual LED override
     socket.on('test_led', (cmd) => {
         if (port && arduinoConnected) {
             port.write(cmd + "\n");
@@ -427,14 +427,14 @@ io.on('connection', (socket) => {
         clearTimeout(sequenceTimeout);
         sessionInProgress = false;
         currentSessionPhotos = [];
-        evaluateLEDState(); // Resets Arduino LED state
+        evaluateLEDState(); 
         io.emit('hardware_update', { type: 'status', value: 'IDLE' });
     });
 
     socket.on('reset_balance', () => {
         availableBalance = 0;
         io.emit('hardware_update', { type: 'balance', value: availableBalance });
-        evaluateLEDState(); // Ensure Red LED turns off
+        evaluateLEDState(); 
         addLog(">  Operator reset customer balance to 0.");
     });
     
@@ -459,8 +459,7 @@ io.on('connection', (socket) => {
     });
 });
 
-// --- FILE CHECKER & COLLAGE GENERATOR (Rest of code remains unchanged) ---
-
+// --- FILE CHECKER & COLLAGE GENERATOR ---
 app.get('/api/gallery', (req, res) => {
     try {
         const files = fs.readdirSync(masterFolder)
@@ -475,40 +474,27 @@ app.get('/api/gallery', (req, res) => {
                 };
             })
             .sort((a, b) => b.timestamp - a.timestamp); 
-
         res.json(files);
-    } catch (error) {
-        res.status(500).json({ error: "Failed to load gallery" });
-    }
+    } catch (error) { res.status(500).json({ error: "Failed to load gallery" }); }
 });
 
 app.delete('/api/gallery/:filename', (req, res) => {
     const filename = req.params.filename;
-    
-    if (!filename.startsWith('collage_') || !filename.endsWith('.jpg')) {
-        return res.status(403).json({ error: "Invalid file type" });
-    }
-
+    if (!filename.startsWith('collage_') || !filename.endsWith('.jpg')) return res.status(403).json({ error: "Invalid file type" });
     const filePath = path.join(masterFolder, filename);
-
     try {
         if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath); 
             addLog(` Permanently deleted archive: ${filename}`);
             res.json({ success: true, message: "File deleted successfully" });
-        } else {
-            res.status(404).json({ error: "File not found" });
-        }
-    } catch (error) {
-        res.status(500).json({ error: "Failed to delete file" });
-    }
+        } else res.status(404).json({ error: "File not found" });
+    } catch (error) { res.status(500).json({ error: "Failed to delete file" }); }
 });
 
 function waitForFile(filePath, timeoutMs = 5000) {
     return new Promise((resolve, reject) => {
         const checkInterval = 200; 
         let elapsed = 0;
-
         const timer = setInterval(() => {
             if (fs.existsSync(filePath)) {
                 clearInterval(timer);
@@ -527,9 +513,7 @@ async function generateCollage(photos, outputPath, filterType) {
     try {
         const resizedImages = await Promise.all(
             photos.map(async (photoPath) => {
-                
                 await waitForFile(photoPath);
-
                 let img = sharp(photoPath).resize(500, 375, { fit: 'cover' });
                 
                 if (filterType === 'NOIR' || filterType === 'FILTER_1') {
@@ -537,13 +521,8 @@ async function generateCollage(photos, outputPath, filterType) {
                 } 
                 else if (filterType === 'FILM_II' || filterType === 'FILTER_2') {
                     img = img.modulate({ saturation: 1.8, brightness: 1.05 })
-                            .recomb([
-                                [1.1, 0.0, 0.0],  
-                                [0.0, 1.05, 0.0], 
-                                [0.0, 0.0, 0.9]   
-                            ]);
+                            .recomb([ [1.1, 0.0, 0.0], [0.0, 1.05, 0.0], [0.0, 0.0, 0.9] ]);
                 }
-                
                 return img.toBuffer();
             })
         );
@@ -555,7 +534,6 @@ async function generateCollage(photos, outputPath, filterType) {
             { input: resizedImages[1], top: 525, left: 50 },
             { input: resizedImages[2], top: 950, left: 50 },
             { input: resizedImages[3], top: 1375, left: 50 },
-            
             { input: resizedImages[0], top: 100, left: 650 },
             { input: resizedImages[1], top: 525, left: 650 },
             { input: resizedImages[2], top: 950, left: 650 },
@@ -564,14 +542,9 @@ async function generateCollage(photos, outputPath, filterType) {
 
         photos.forEach(photoPath => { 
             if (fs.existsSync(photoPath)) {
-                try {
-                    fs.unlinkSync(photoPath); 
-                } catch(e) {
-                    console.log(`Could not delete raw file: ${photoPath}`);
-                }
+                try { fs.unlinkSync(photoPath); } catch(e) {}
             }
         });
-        
     } catch (error) { 
         console.error("Collage Generation Error:", error);
         throw error; 
