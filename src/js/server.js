@@ -66,7 +66,7 @@ let lockedSessionFilter = 'NORMAL';
 let sessionInProgress = false;
 
 let arduinoConnected = false; 
-let isConnecting = false; // Prevents overlapping connection attempts
+let isConnecting = false; 
 const SESSION_COST = 200; 
 
 let arduinoTotal = 0; 
@@ -82,8 +82,6 @@ let port;
 let parser;
 
 // --- HARDWARE HELPER FUNCTIONS ---
-
-// Check System Printer on Boot
 function verifyPrinter() {
     exec('powershell -Command "Get-CimInstance Win32_Printer -Filter \\"Default=True\\" | Select-Object -ExpandProperty Name"', (err, stdout) => {
         const printerName = stdout.trim();
@@ -96,7 +94,6 @@ function verifyPrinter() {
 }
 verifyPrinter();
 
-// Evaluates Balance for LEDs and BG Music
 function evaluateLEDState() {
     if (sessionInProgress) return; 
     
@@ -226,7 +223,7 @@ async function startSessionLoop(isFreePlay = false) {
     io.emit('hardware_update', { type: 'trigger', value: 'START' });
     
     if (port && arduinoConnected) port.write("SESSION_START\n");
-    io.emit('bg_music_command', 'STOP'); // Stop music immediately if starting
+    // BG Music intentionally NOT stopped here so it plays during the session!
 
     let photoCount = 0;
 
@@ -257,7 +254,6 @@ async function startSessionLoop(isFreePlay = false) {
     runPhotoCycle();
 }
 
-// --- BULLETPROOF ARDUINO AUTO-RECONNECT ---
 async function connectToHardware() {
     isConnecting = true;
     try {
@@ -270,7 +266,7 @@ async function connectToHardware() {
 
         if (!targetPort) {
             isConnecting = false;
-            return; // Fail silently so the interval can keep checking without spamming logs
+            return; 
         }
 
         port = new SerialPort({ path: targetPort.path, baudRate: 115200, autoOpen: false });
@@ -296,12 +292,10 @@ async function connectToHardware() {
                 arduinoConnected = true;
                 addLog(`>  System linked to Arduino on ${targetPort.path}`);
                 
-                // Toggle DTR to force board reboot on connect (mimics IDE reset)
                 port.set({ dtr: false }, () => {
                     setTimeout(() => port.set({ dtr: true }), 50);
                 });
-                
-                setTimeout(evaluateLEDState, 1500); // Check state after board wakes up
+                setTimeout(evaluateLEDState, 1500); 
             }
         });
 
@@ -313,7 +307,6 @@ async function connectToHardware() {
 
             if (cleanData.includes('FILTER')) {
                 const incomingFilter = cleanData.replace('FILTER:', '').trim();
-
                 if (!sessionInProgress) {
                     if (incomingFilter !== 'NORMAL') {
                         clearTimeout(normalDebounce);
@@ -333,7 +326,6 @@ async function connectToHardware() {
                         }, 250);
                     }
                 }
-                
             } else if (cleanData.includes('TRIGGER: START') || cleanData.includes('BUTTON_CLICKED')) {
                 addLog(`> DEBUG: Button Trigger Received.`);
                 if (availableBalance >= SESSION_COST) {
@@ -341,10 +333,11 @@ async function connectToHardware() {
                 } else {
                     addLog(`ERROR: ❌ INSUFFICIENT FUNDS. Balance: ${availableBalance} PHP (Requires ${SESSION_COST} PHP).`);
                 }
-                
             } else if (cleanData.includes('BALANCE:')) {
                 const currentArduinoVal = parseInt(cleanData.split(':')[1]);
                 
+                if (currentArduinoVal < arduinoTotal) arduinoTotal = 0;
+
                 if (currentArduinoVal > arduinoTotal) {
                     const newlyInserted = currentArduinoVal - arduinoTotal;
                     availableBalance += newlyInserted;
@@ -366,16 +359,11 @@ async function connectToHardware() {
     }
 }
 
-// Heartbeat Loop: Scans for Arduino every 3 seconds if disconnected
 setInterval(() => {
-    if (!arduinoConnected && !isConnecting) {
-        connectToHardware();
-    }
+    if (!arduinoConnected && !isConnecting) connectToHardware();
 }, 3000);
 
-// --- SOCKET.IO COMMUNICATION ---
 io.on('connection', (socket) => {
-    
     socket.on('request_sync', () => {
         socket.emit('audit_update', { revenue: totalRevenue, sessions: totalSessions });
         socket.emit('hardware_update', { type: 'balance', value: availableBalance }); 
@@ -384,10 +372,7 @@ io.on('connection', (socket) => {
         socket.emit('sync_timer', countdownTimerStart); 
     });
 
-    socket.on('session_complete', () => { 
-        evaluateLEDState(); 
-    });
-    
+    socket.on('session_complete', () => { evaluateLEDState(); });
     socket.on('clear_terminal', () => {
         terminalHistory = ['> Terminal cleared by operator.'];
         io.emit('terminal_history', terminalHistory); 
@@ -449,17 +434,13 @@ io.on('connection', (socket) => {
     socket.on('restart_system', () => {
         addLog(`>  OPERATOR COMMAND: SYSTEM REBOOTING IN 3 SECONDS...`);
         setTimeout(() => {
-            const child = spawn(process.argv[0], process.argv.slice(1), {
-                detached: true,
-                stdio: 'inherit'
-            });
+            const child = spawn(process.argv[0], process.argv.slice(1), { detached: true, stdio: 'inherit' });
             child.unref(); 
             process.exit(); 
         }, 3000);
     });
 });
 
-// --- FILE CHECKER & COLLAGE GENERATOR ---
 app.get('/api/gallery', (req, res) => {
     try {
         const files = fs.readdirSync(masterFolder)
@@ -467,11 +448,7 @@ app.get('/api/gallery', (req, res) => {
             .map(file => {
                 const filePath = path.join(masterFolder, file);
                 const stats = fs.statSync(filePath);
-                return {
-                    name: file,
-                    url: `http://localhost:3001/archive/${file}`,
-                    timestamp: stats.mtime.getTime()
-                };
+                return { name: file, url: `http://localhost:3001/archive/${file}`, timestamp: stats.mtime.getTime() };
             })
             .sort((a, b) => b.timestamp - a.timestamp); 
         res.json(files);
@@ -530,25 +507,16 @@ async function generateCollage(photos, outputPath, filterType) {
         await sharp({
             create: { width: 1200, height: 1800, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 1 } }
         }).composite([
-            { input: resizedImages[0], top: 100, left: 50 },
-            { input: resizedImages[1], top: 525, left: 50 },
-            { input: resizedImages[2], top: 950, left: 50 },
-            { input: resizedImages[3], top: 1375, left: 50 },
-            { input: resizedImages[0], top: 100, left: 650 },
-            { input: resizedImages[1], top: 525, left: 650 },
-            { input: resizedImages[2], top: 950, left: 650 },
-            { input: resizedImages[3], top: 1375, left: 650 }
+            { input: resizedImages[0], top: 100, left: 50 }, { input: resizedImages[1], top: 525, left: 50 },
+            { input: resizedImages[2], top: 950, left: 50 }, { input: resizedImages[3], top: 1375, left: 50 },
+            { input: resizedImages[0], top: 100, left: 650 }, { input: resizedImages[1], top: 525, left: 650 },
+            { input: resizedImages[2], top: 950, left: 650 }, { input: resizedImages[3], top: 1375, left: 650 }
         ]).jpeg({ quality: 90 }).toFile(outputPath);
 
         photos.forEach(photoPath => { 
-            if (fs.existsSync(photoPath)) {
-                try { fs.unlinkSync(photoPath); } catch(e) {}
-            }
+            if (fs.existsSync(photoPath)) { try { fs.unlinkSync(photoPath); } catch(e) {} }
         });
-    } catch (error) { 
-        console.error("Collage Generation Error:", error);
-        throw error; 
-    }
+    } catch (error) { throw error; }
 }
 
 server.listen(PORT, () => console.log(` FLIK Master Backend running on port ${PORT}`));
