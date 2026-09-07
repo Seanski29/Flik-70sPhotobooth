@@ -20,14 +20,39 @@
         h3 { margin: 3px 0; font-size: 13px; }
         .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; }
         .btn-test, .btn-op { padding: 6px; font-size: 12px; font-weight: bold; border: none; border-radius: 4px; color: white; cursor: pointer; transition: 0.2s ease; }
+        .printer-settings-modal { display: none; position: fixed; inset: 0; z-index: 9000; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.78); }
+        .printer-settings-box { width: min(460px, calc(100vw - 40px)); padding: 24px; color: #fff; background: #1e1e1e; border: 1px solid #444; border-radius: 10px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.65); }
+        .printer-settings-box h2 { margin: 0 0 8px; font-size: 20px; }
+        .printer-settings-box p { margin: 0 0 18px; color: #bbb; font-size: 13px; }
+        .printer-settings-box select { width: 100%; padding: 11px; color: #fff; background: #2b2b2b; border: 1px solid #555; border-radius: 5px; }
+        .printer-settings-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+        .printer-settings-actions button { padding: 9px 16px; border: 0; border-radius: 5px; color: #fff; cursor: pointer; font-weight: bold; }
+        .printer-settings-actions .cancel { background: #555; }
+        .printer-settings-actions .save { background: #2563eb; }
+        .printer-status { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
         /* Slider */
-        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; margin-top: 5px; }
+        input[type=range] { appearance: none; -webkit-appearance: none; width: 100%; background: transparent; margin-top: 5px; }
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #ef4444; cursor: pointer; margin-top: -6px; }
         input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 5px; cursor: pointer; background: #555; border-radius: 3px; }
     </style>
 </head>
 <body class="app-layout">
+
+    <div class="page-loader" id="page-loader" role="status" aria-label="Loading dashboard">
+        <div class="loader-sidebar">
+            <div class="loader-block loader-logo"></div>
+            <div class="loader-line loader-nav"></div>
+            <div class="loader-line loader-nav"></div>
+            <div class="loader-line loader-nav"></div>
+            <div class="loader-line loader-nav"></div>
+        </div>
+        <div class="loader-content">
+            <div class="loader-line loader-title"></div>
+            <div class="loader-line loader-subtitle"></div>
+            <div class="loader-block loader-panel-wide"></div>
+        </div>
+    </div>
 
     <div id="sidebar-container"></div> 
 
@@ -64,6 +89,7 @@
                         <div class="metric">Balance: <span class="metric-value" id="balanceDisplay">0 PHP</span></div>
                         <div class="metric">Filter: <span class="metric-value" id="filterDisplay">NORMAL</span></div>
                         <div class="metric">Status: <span class="metric-value" id="sessionDisplay">IDLE</span></div>
+                        <div class="metric printer-status">Printer: <span class="metric-value" id="printerDisplay">None selected</span></div>
                     </div>
                 </div>
 
@@ -76,6 +102,7 @@
                     </div>
                     
                     <h3 style="margin-top: 8px;">Settings</h3>
+                    <button class="btn-op btn-filter" type="button" onclick="openPrinterSettings()">Printer Settings</button>
                     <div class="metric" style="flex-direction: column; align-items: flex-start; gap: 0;">
                         <label style="font-size: 13px; font-weight: bold; color: #ccc;">Photo Countdown: <span id="timerLabel" style="color:#ef4444;">10</span>s</label>
                         <input type="range" id="timerSlider" min="3" max="10" value="10">
@@ -102,13 +129,32 @@
         </div>
     </main>
 
+    <div id="printerSettingsModal" class="printer-settings-modal" role="dialog" aria-modal="true" aria-labelledby="printer-settings-title">
+        <div class="printer-settings-box">
+            <h2 id="printer-settings-title">Printer Settings</h2>
+            <p>Select the Windows printer that should receive collage jobs. The selected printer is saved locally.</p>
+            <select id="printerSelect" aria-label="Target printer">
+                <option value="">Loading printers...</option>
+            </select>
+            <div class="printer-settings-actions">
+                <button class="cancel" type="button" onclick="closePrinterSettings()">Cancel</button>
+                <button class="save" type="button" onclick="savePrinterSettings()">Save Printer</button>
+            </div>
+        </div>
+    </div>
+
     <script src="../js/sidebar.js"></script>
+    <script src="../js/loader.js"></script>
 <script>
         const socket = io('http://localhost:3001');
         const terminalBox = document.getElementById('terminalBox');
         const liveView = document.getElementById('webcam-preview');
         const timerSlider = document.getElementById('timerSlider');
         const timerLabel = document.getElementById('timerLabel');
+        const printerSelect = document.getElementById('printerSelect');
+        const printerModal = document.getElementById('printerSettingsModal');
+        const printerDisplay = document.getElementById('printerDisplay');
+        let configuredPrinterName = '';
         
         const countdownAudio = new Audio('../../assets/10_sc.mp3');
         const bgAudio = new Audio('../../assets/bg_music.mp3');
@@ -170,6 +216,53 @@
         }
 
         socket.on('connect', () => { socket.emit('request_sync'); });
+
+        socket.on('printer_config', (config) => {
+            const printerName = config.target || '';
+            configuredPrinterName = printerName;
+            printerDisplay.innerText = printerName || 'None selected';
+            if (printerSelect.querySelector(`option[value="${CSS.escape(printerName)}"]`)) {
+                printerSelect.value = printerName;
+            }
+        });
+
+        socket.on('printer_list', (printers) => {
+            const currentValue = configuredPrinterName || printerSelect.value;
+            printerSelect.innerHTML = '';
+            if (!printers.length) {
+                printerSelect.innerHTML = '<option value="">No Windows printers found</option>';
+                return;
+            }
+
+            printers.forEach(printer => {
+                const option = document.createElement('option');
+                option.value = printer.Name;
+                option.textContent = printer.Name;
+                printerSelect.appendChild(option);
+            });
+
+            if (printers.some(printer => printer.Name === currentValue)) {
+                printerSelect.value = currentValue;
+            }
+        });
+
+        function openPrinterSettings() {
+            printerModal.style.display = 'flex';
+            socket.emit('request_printers');
+        }
+
+        function closePrinterSettings() {
+            printerModal.style.display = 'none';
+        }
+
+        function savePrinterSettings() {
+            socket.emit('save_printer', printerSelect.value);
+            closePrinterSettings();
+        }
+
+        printerModal.addEventListener('click', (event) => {
+            if (event.target === printerModal) closePrinterSettings();
+        });
 
         socket.on('terminal_history', (historyArray) => {
             terminalBox.innerHTML = ''; 

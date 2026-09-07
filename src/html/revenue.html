@@ -9,6 +9,24 @@
 </head>
 <body class="app-layout">
 
+    <div class="page-loader" id="page-loader" role="status" aria-label="Loading revenue">
+        <div class="loader-sidebar">
+            <div class="loader-block loader-logo"></div>
+            <div class="loader-line loader-nav"></div>
+            <div class="loader-line loader-nav"></div>
+            <div class="loader-line loader-nav"></div>
+            <div class="loader-line loader-nav"></div>
+        </div>
+        <div class="loader-content">
+            <div class="loader-line loader-title"></div>
+            <div class="loader-line loader-subtitle"></div>
+            <div style="display: flex; gap: 30px;">
+                <div class="loader-block loader-panel" style="height: 190px;"></div>
+                <div class="loader-block loader-panel" style="height: 190px;"></div>
+            </div>
+        </div>
+    </div>
+
     <div id="sidebar-container"></div> 
 
     <main class="workspace">
@@ -37,6 +55,7 @@
     </main>
 
     <script src="../js/sidebar.js"></script>
+    <script src="../js/loader.js"></script>
     <script>
         const socket = io('http://localhost:3001');
 

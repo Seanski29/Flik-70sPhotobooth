@@ -18,6 +18,73 @@
     box-sizing: border-box;
 }
 
+/* --- SHARED SKELETON LOADER --- */
+.page-loader {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    background: #17110d;
+    color: #f4ebe0;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.page-loader.is-hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.loader-sidebar {
+    width: 250px;
+    padding: 28px 20px;
+    border-right: 2px solid rgba(244, 235, 224, 0.12);
+}
+
+.loader-content {
+    flex: 1;
+    padding: 28px;
+}
+
+.loader-line,
+.loader-block {
+    position: relative;
+    overflow: hidden;
+    border-radius: 5px;
+    background: rgba(244, 235, 224, 0.12);
+}
+
+.loader-line::after,
+.loader-block::after {
+    position: absolute;
+    inset: 0;
+    content: "";
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+    animation: loader-shimmer 1.2s infinite;
+}
+
+.loader-logo { width: 145px; height: 42px; margin: 0 auto 48px; }
+.loader-nav { width: 100%; height: 23px; margin-bottom: 25px; }
+.loader-title { width: min(340px, 70%); height: 34px; margin-bottom: 12px; }
+.loader-subtitle { width: 240px; height: 15px; margin-bottom: 32px; }
+.loader-panel { width: 100%; height: 180px; margin-bottom: 20px; }
+.loader-panel-wide { width: 100%; height: 300px; }
+
+@keyframes loader-shimmer {
+    100% { transform: translateX(100%); }
+}
+
+@media (max-width: 1200px) {
+    .loader-sidebar { width: 80px; padding: 28px 15px; }
+    .loader-logo { width: 45px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .loader-line::after,
+    .loader-block::after { animation: none; }
+}
+
 body {
     font-family: var(--font-ui);
     background: url('../../assets/background.png') no-repeat center center fixed !important;
@@ -121,7 +188,7 @@ body {
 .btn-restart { background-color: #f97316; } .btn-restart:hover { background-color: #ea580c; }
 .btn-op:active, .btn-test:active { transform: scale(0.95); }
 
-input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; margin-top: 4px; }
+input[type=range] { appearance: none; -webkit-appearance: none; width: 100%; background: transparent; margin-top: 4px; }
 input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #ef4444; cursor: pointer; margin-top: -6px; }
 input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 5px; cursor: pointer; background: #555; border-radius: 3px; }
 

@@ -7,6 +7,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Rye&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
 <body class="auth-layout">
+
+    <div class="page-loader" id="page-loader" role="status" aria-label="Loading login">
+        <div class="loader-content">
+            <div class="loader-block loader-panel" style="max-width: 450px; height: 360px; margin: 15vh auto 0;"></div>
+        </div>
+    </div>
     
     <!-- NEW: System Pre-Flight Modal -->
     <div id="digicamModal" class="modal-overlay">
@@ -71,5 +77,6 @@
     
     <script src="../js/login.js"></script>
     <script src="../js/app.js"></script>
+    <script src="../js/loader.js"></script>
 </body>
 </html>

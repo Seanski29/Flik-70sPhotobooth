@@ -106,6 +106,21 @@
     </style>
 </head>
 <body class="app-layout">
+
+    <div class="page-loader" id="page-loader" role="status" aria-label="Loading settings">
+        <div class="loader-sidebar">
+            <div class="loader-block loader-logo"></div>
+            <div class="loader-line loader-nav"></div>
+            <div class="loader-line loader-nav"></div>
+            <div class="loader-line loader-nav"></div>
+            <div class="loader-line loader-nav"></div>
+        </div>
+        <div class="loader-content">
+            <div class="loader-line loader-title"></div>
+            <div class="loader-line loader-subtitle"></div>
+            <div class="loader-block loader-panel-wide"></div>
+        </div>
+    </div>
     
     <div id="sidebar-container"></div>
 
@@ -160,5 +175,6 @@
     
     <script src="../js/sidebar.js"></script>
     <script src="../js/settings.js"></script>
+    <script src="../js/loader.js"></script>
 </body>
 </html>

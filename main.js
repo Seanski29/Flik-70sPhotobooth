@@ -1,9 +1,10 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, dialog } = require('electron');
 const { fork } = require('child_process');
 const path = require('path');
 
 let mainWindow;
 let serverProcess;
+let isQuitting = false;
 
 function createWindow() {
     // 1. Start your backend server silently in the background
@@ -22,6 +23,26 @@ function createWindow() {
             nodeIntegration: false,
             contextIsolation: true
         }
+    });
+
+    mainWindow.on('close', (event) => {
+        if (isQuitting) return;
+
+        event.preventDefault();
+        dialog.showMessageBox(mainWindow, {
+            type: 'question',
+            buttons: ['Yes', 'No'],
+            defaultId: 1,
+            cancelId: 1,
+            title: 'Exit FLIK',
+            message: 'Do you want to exit the application?',
+            detail: 'All saved changes will be kept.'
+        }).then(({ response }) => {
+            if (response === 0) {
+                isQuitting = true;
+                mainWindow.close();
+            }
+        });
     });
 
     // 3. Load the Login Page FIRST

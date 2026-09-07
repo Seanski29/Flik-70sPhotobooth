@@ -9,6 +9,21 @@
 </head>
 <body class="app-layout">
 
+    <div class="page-loader" id="page-loader" role="status" aria-label="Loading archive">
+        <div class="loader-sidebar">
+            <div class="loader-block loader-logo"></div>
+            <div class="loader-line loader-nav"></div>
+            <div class="loader-line loader-nav"></div>
+            <div class="loader-line loader-nav"></div>
+            <div class="loader-line loader-nav"></div>
+        </div>
+        <div class="loader-content">
+            <div class="loader-line loader-title"></div>
+            <div class="loader-line loader-subtitle"></div>
+            <div class="loader-block loader-panel-wide"></div>
+        </div>
+    </div>
+
     <div id="sidebar-container"></div> 
 
     <div id="previewModal" class="modal-overlay">
@@ -43,6 +58,7 @@
     </main>
 
     <script src="../js/sidebar.js"></script>
+    <script src="../js/loader.js"></script>
     <script>
         const socket = io('http://localhost:3001');
         let fileToDelete = null;

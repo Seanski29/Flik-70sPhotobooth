@@ -2,7 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
-const { exec, spawn } = require('child_process');
+const { exec, execFile, spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const { SerialPort, ReadlineParser } = require('serialport');
@@ -35,8 +35,33 @@ function addLog(msg) {
 
 // --- PERSISTENT DATABASE SYSTEM ---
 const statsFilePath = path.join(__dirname, 'stats.json');
+const configFilePath = path.join(__dirname, 'config.json');
 let totalRevenue = 0;
 let totalSessions = 0;
+let appConfig = { printerName: '' };
+
+function loadConfig() {
+    try {
+        if (fs.existsSync(configFilePath)) {
+            appConfig = { ...appConfig, ...JSON.parse(fs.readFileSync(configFilePath, 'utf8')) };
+        } else {
+            saveConfig();
+        }
+    } catch (err) {
+        console.error('Failed to read config.json:', err);
+        appConfig = { printerName: '' };
+    }
+}
+
+function saveConfig() {
+    try {
+        fs.writeFileSync(configFilePath, JSON.stringify(appConfig, null, 2));
+    } catch (err) {
+        console.error('Failed to save config:', err);
+    }
+}
+
+loadConfig();
 
 function loadStats() {
     try {
@@ -80,19 +105,30 @@ let normalDebounce;
 
 let port; 
 let parser;
+let printJobActive = false;
 
 // --- HARDWARE HELPER FUNCTIONS ---
-function verifyPrinter() {
-    exec('powershell -Command "Get-CimInstance Win32_Printer -Filter \\"Default=True\\" | Select-Object -ExpandProperty Name"', (err, stdout) => {
-        const printerName = stdout.trim();
-        if (!err && printerName) {
-            addLog(`> 🖨️ PRINTER DETECTED: Default set to [${printerName}]`);
-        } else {
-            addLog(`> ⚠️ WARNING: No default Windows printer detected!`);
-        }
+
+function listInstalledPrinters() {
+    return new Promise((resolve) => {
+        const command = 'Get-CimInstance Win32_Printer | Select-Object Name, PrinterStatus, WorkOffline | ConvertTo-Json -Compress';
+        execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', command], (error, stdout) => {
+            if (error) {
+                addLog('ERROR: Failed to scan installed Windows printers.');
+                resolve([]);
+                return;
+            }
+
+            try {
+                const parsed = stdout.trim() ? JSON.parse(stdout) : [];
+                resolve((Array.isArray(parsed) ? parsed : [parsed]).filter(printer => printer.Name));
+            } catch (parseError) {
+                addLog('ERROR: Windows returned an invalid printer list.');
+                resolve([]);
+            }
+        });
     });
 }
-verifyPrinter();
 
 function evaluateLEDState() {
     if (sessionInProgress) return; 
@@ -106,11 +142,91 @@ function evaluateLEDState() {
     }
 }
 
+function printWithPowerShell(imagePath, printerName, onComplete) {
+    const escapePowerShell = value => String(value).replace(/'/g, "''");
+    const command = `
+        Add-Type -AssemblyName System.Drawing;
+        $printer = '${escapePowerShell(printerName)}';
+        $imagePath = '${escapePowerShell(imagePath)}';
+        $document = New-Object System.Drawing.Printing.PrintDocument;
+        try {
+            $document.PrinterSettings.PrinterName = $printer;
+            if (-not $document.PrinterSettings.IsValid) { throw "Target printer not available: $printer" }
+            $document.PrintController = New-Object System.Drawing.Printing.StandardPrintController;
+            $paper = $document.PrinterSettings.PaperSizes | Where-Object {
+                $_.PaperName -match '(?i)(4.?x.?6|6.?x.?4|postcard|dnp)' -and $_.Width -gt 350 -and $_.Width -lt 700
+            } | Select-Object -First 1;
+            if ($paper) {
+                $document.DefaultPageSettings.PaperSize = $paper;
+            } else {
+                $document.DefaultPageSettings.PaperSize = New-Object System.Drawing.Printing.PaperSize('DNP 4x6', 400, 600);
+            }
+            $document.DefaultPageSettings.Margins = New-Object System.Drawing.Printing.Margins(0, 0, 0, 0);
+            $document.OriginAtMargins = $false;
+            $document.add_PrintPage({
+                param($sender, $eventArgs)
+                $image = [System.Drawing.Image]::FromFile($imagePath);
+                try {
+                    $eventArgs.Graphics.DrawImage($image, $eventArgs.PageBounds);
+                    $eventArgs.HasMorePages = $false;
+                } finally {
+                    $image.Dispose();
+                }
+            });
+            $document.Print();
+        } finally {
+            $document.Dispose();
+        }
+    `;
+
+    execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-STA', '-ExecutionPolicy', 'Bypass', '-Command', command], {
+        windowsHide: true,
+        timeout: 30000,
+        killSignal: 'SIGKILL'
+    }, (error, stdout, stderr) => {
+        onComplete();
+        if (error) {
+            const reason = error.killed ? 'The fallback print command timed out.' : (stderr.trim() || error.message);
+            addLog(`ERROR: Failed to print on [${printerName}]. ${reason}`);
+            return;
+        }
+        addLog(`> Print job sent silently to [${printerName}] using the configured 4x6 driver profile.`);
+    });
+}
+
 function printCollage(imagePath) {
     addLog(`🖨️ Preparing to print: ${path.basename(imagePath)}`);
-    const command = `powershell -command "Start-Process -FilePath '${imagePath}' -Verb Print"`;
-    exec(command, (error) => {
-        if (error) addLog(`ERROR: Failed to send to printer.`);
+    if (!appConfig.printerName) {
+        addLog('ERROR: No target printer selected. Open Dashboard Settings to choose one.');
+        return;
+    }
+    if (printJobActive) {
+        addLog('ERROR: A print job is already being submitted. The new job was skipped to protect the spooler.');
+        return;
+    }
+
+    printJobActive = true;
+    const finishPrintJob = () => { printJobActive = false; };
+
+    const paintPath = path.join(process.env.WINDIR || 'C:\\Windows', 'System32', 'mspaint.exe');
+    if (!fs.existsSync(paintPath)) {
+        addLog('> mspaint.exe is unavailable; using the silent targeted printer fallback.');
+        printWithPowerShell(imagePath, appConfig.printerName, finishPrintJob);
+        return;
+    }
+
+    execFile(paintPath, ['/pt', imagePath, appConfig.printerName], {
+        windowsHide: true,
+        timeout: 15000,
+        killSignal: 'SIGKILL'
+    }, (error, stdout, stderr) => {
+        finishPrintJob();
+        if (error) {
+            const reason = error.killed ? 'The print command timed out.' : (stderr.trim() || error.message);
+            addLog(`ERROR: Failed to print on [${appConfig.printerName}]. ${reason}`);
+            return;
+        }
+        addLog(`> 🖨️ Print job sent silently to [${appConfig.printerName}] using the configured 4x6 driver profile.`);
     });
 }
 
@@ -370,6 +486,26 @@ io.on('connection', (socket) => {
         socket.emit('hardware_update', { type: 'filter', value: `FILTER: ${activeFilter}` }); 
         socket.emit('terminal_history', terminalHistory);
         socket.emit('sync_timer', countdownTimerStart); 
+        socket.emit('printer_config', { target: appConfig.printerName });
+        listInstalledPrinters().then(printers => socket.emit('printer_list', printers));
+    });
+
+    socket.on('request_printers', async () => {
+        socket.emit('printer_list', await listInstalledPrinters());
+    });
+
+    socket.on('save_printer', (printerName) => {
+        if (typeof printerName !== 'string') return;
+        appConfig.printerName = printerName.trim();
+        saveConfig();
+        io.emit('printer_config', { target: appConfig.printerName });
+        addLog(`> 🖨️ Target printer set to [${appConfig.printerName || 'None'}].`);
+    });
+
+    socket.on('print_photo', (filename) => {
+        if (typeof filename !== 'string' || !/^collage_[^\\/]+\.jpg$/i.test(filename)) return;
+        const imagePath = path.join(masterFolder, filename);
+        if (fs.existsSync(imagePath)) printCollage(imagePath);
     });
 
     socket.on('session_complete', () => { evaluateLEDState(); });
