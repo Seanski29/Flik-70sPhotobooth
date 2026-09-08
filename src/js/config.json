@@ -1,3 +1,5 @@
 {
-  "printerName": "DS-RX1"
+  "targetPrinter": "DS-RX1",
+  "printerName": "DS-RX1",
+  "activeFrame": "1.png"
 }

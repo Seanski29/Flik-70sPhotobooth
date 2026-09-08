@@ -17,9 +17,12 @@ app.use(cors());
 app.use(express.json());
 
 const masterFolder = path.join(__dirname, '..', 'archive');
+const framesFolder = path.join(__dirname, '..', '..', 'assets', 'frames');
 app.use('/archive', express.static(masterFolder)); 
+app.use('/frames', express.static(framesFolder));
 
 if (!fs.existsSync(masterFolder)) fs.mkdirSync(masterFolder, { recursive: true });
+if (!fs.existsSync(framesFolder)) fs.mkdirSync(framesFolder, { recursive: true });
 
 // --- TERMINAL LOGGER ---
 const MAX_LOGS = 100;
@@ -38,18 +41,20 @@ const statsFilePath = path.join(__dirname, 'stats.json');
 const configFilePath = path.join(__dirname, 'config.json');
 let totalRevenue = 0;
 let totalSessions = 0;
-let appConfig = { printerName: '' };
+let appConfig = { targetPrinter: '', printerName: '', activeFrame: '' };
 
 function loadConfig() {
     try {
         if (fs.existsSync(configFilePath)) {
             appConfig = { ...appConfig, ...JSON.parse(fs.readFileSync(configFilePath, 'utf8')) };
+            appConfig.targetPrinter = appConfig.targetPrinter || appConfig.printerName || '';
+            appConfig.printerName = appConfig.targetPrinter;
         } else {
             saveConfig();
         }
     } catch (err) {
         console.error('Failed to read config.json:', err);
-        appConfig = { printerName: '' };
+        appConfig = { targetPrinter: '', printerName: '', activeFrame: '' };
     }
 }
 
@@ -142,61 +147,9 @@ function evaluateLEDState() {
     }
 }
 
-function printWithPowerShell(imagePath, printerName, onComplete) {
-    const escapePowerShell = value => String(value).replace(/'/g, "''");
-    const command = `
-        Add-Type -AssemblyName System.Drawing;
-        $printer = '${escapePowerShell(printerName)}';
-        $imagePath = '${escapePowerShell(imagePath)}';
-        $document = New-Object System.Drawing.Printing.PrintDocument;
-        try {
-            $document.PrinterSettings.PrinterName = $printer;
-            if (-not $document.PrinterSettings.IsValid) { throw "Target printer not available: $printer" }
-            $document.PrintController = New-Object System.Drawing.Printing.StandardPrintController;
-            $paper = $document.PrinterSettings.PaperSizes | Where-Object {
-                $_.PaperName -match '(?i)(4.?x.?6|6.?x.?4|postcard|dnp)' -and $_.Width -gt 350 -and $_.Width -lt 700
-            } | Select-Object -First 1;
-            if ($paper) {
-                $document.DefaultPageSettings.PaperSize = $paper;
-            } else {
-                $document.DefaultPageSettings.PaperSize = New-Object System.Drawing.Printing.PaperSize('DNP 4x6', 400, 600);
-            }
-            $document.DefaultPageSettings.Margins = New-Object System.Drawing.Printing.Margins(0, 0, 0, 0);
-            $document.OriginAtMargins = $false;
-            $document.add_PrintPage({
-                param($sender, $eventArgs)
-                $image = [System.Drawing.Image]::FromFile($imagePath);
-                try {
-                    $eventArgs.Graphics.DrawImage($image, $eventArgs.PageBounds);
-                    $eventArgs.HasMorePages = $false;
-                } finally {
-                    $image.Dispose();
-                }
-            });
-            $document.Print();
-        } finally {
-            $document.Dispose();
-        }
-    `;
-
-    execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-STA', '-ExecutionPolicy', 'Bypass', '-Command', command], {
-        windowsHide: true,
-        timeout: 30000,
-        killSignal: 'SIGKILL'
-    }, (error, stdout, stderr) => {
-        onComplete();
-        if (error) {
-            const reason = error.killed ? 'The fallback print command timed out.' : (stderr.trim() || error.message);
-            addLog(`ERROR: Failed to print on [${printerName}]. ${reason}`);
-            return;
-        }
-        addLog(`> Print job sent silently to [${printerName}] using the configured 4x6 driver profile.`);
-    });
-}
-
 function printCollage(imagePath) {
     addLog(`🖨️ Preparing to print: ${path.basename(imagePath)}`);
-    if (!appConfig.printerName) {
+    if (!appConfig.targetPrinter) {
         addLog('ERROR: No target printer selected. Open Dashboard Settings to choose one.');
         return;
     }
@@ -210,12 +163,12 @@ function printCollage(imagePath) {
 
     const paintPath = path.join(process.env.WINDIR || 'C:\\Windows', 'System32', 'mspaint.exe');
     if (!fs.existsSync(paintPath)) {
-        addLog('> mspaint.exe is unavailable; using the silent targeted printer fallback.');
-        printWithPowerShell(imagePath, appConfig.printerName, finishPrintJob);
+        finishPrintJob();
+        addLog('ERROR: mspaint.exe is unavailable; print job was not submitted.');
         return;
     }
 
-    execFile(paintPath, ['/pt', imagePath, appConfig.printerName], {
+    execFile(paintPath, ['/pt', imagePath, appConfig.targetPrinter], {
         windowsHide: true,
         timeout: 15000,
         killSignal: 'SIGKILL'
@@ -223,10 +176,10 @@ function printCollage(imagePath) {
         finishPrintJob();
         if (error) {
             const reason = error.killed ? 'The print command timed out.' : (stderr.trim() || error.message);
-            addLog(`ERROR: Failed to print on [${appConfig.printerName}]. ${reason}`);
+            addLog(`ERROR: Failed to print on [${appConfig.targetPrinter}]. ${reason}`);
             return;
         }
-        addLog(`> 🖨️ Print job sent silently to [${appConfig.printerName}] using the configured 4x6 driver profile.`);
+        addLog(`> 🖨️ Print job sent silently to [${appConfig.targetPrinter}] using the configured 4x6 driver profile.`);
     });
 }
 
@@ -269,7 +222,7 @@ function capturePhoto() {
                 const collagePath = path.join(masterFolder, collageName);
                                 
                 try {
-                    await generateCollage(currentSessionPhotos, collagePath, lockedSessionFilter);
+                    await createCollage(currentSessionPhotos, collagePath, lockedSessionFilter);
                     const imageUrl = `http://localhost:3001/archive/${collageName}`;
                     
                     io.emit('collage_ready', imageUrl);
@@ -487,6 +440,8 @@ io.on('connection', (socket) => {
         socket.emit('terminal_history', terminalHistory);
         socket.emit('sync_timer', countdownTimerStart); 
         socket.emit('printer_config', { target: appConfig.printerName });
+        socket.emit('frame_config', { active: appConfig.activeFrame });
+        socket.emit('frame_list', listFrames());
         listInstalledPrinters().then(printers => socket.emit('printer_list', printers));
     });
 
@@ -496,10 +451,80 @@ io.on('connection', (socket) => {
 
     socket.on('save_printer', (printerName) => {
         if (typeof printerName !== 'string') return;
-        appConfig.printerName = printerName.trim();
+        appConfig.targetPrinter = printerName.trim();
+        appConfig.printerName = appConfig.targetPrinter;
         saveConfig();
         io.emit('printer_config', { target: appConfig.printerName });
         addLog(`> 🖨️ Target printer set to [${appConfig.printerName || 'None'}].`);
+    });
+
+    socket.on('request_frames', () => {
+        socket.emit('frame_config', { active: appConfig.activeFrame });
+        socket.emit('frame_list', listFrames());
+    });
+
+    socket.on('upload_frame', (payload) => {
+        try {
+            if (!payload || typeof payload.name !== 'string' || typeof payload.data !== 'string') {
+                throw new Error('Invalid frame upload payload.');
+            }
+            const extension = path.extname(payload.name).toLowerCase();
+            if (!['.jpg', '.jpeg', '.png', '.webp'].includes(extension)) {
+                throw new Error('Only JPG, PNG, and WebP frames are supported.');
+            }
+            const safeBaseName = path.basename(payload.name).replace(/[^a-zA-Z0-9._-]/g, '_');
+            const data = payload.data.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, '');
+            const buffer = Buffer.from(data, 'base64');
+            if (!buffer.length || buffer.length > 15 * 1024 * 1024) {
+                throw new Error('Frame must be between 1 byte and 15 MB.');
+            }
+            fs.writeFileSync(path.join(framesFolder, safeBaseName), buffer, { flag: 'wx' });
+            addLog(`> Frame uploaded: ${safeBaseName}`);
+            io.emit('frame_list', listFrames());
+        } catch (error) {
+            socket.emit('frame_error', error.message);
+        }
+    });
+
+    socket.on('set_active_frame', (filename) => {
+        if (typeof filename !== 'string' || filename !== path.basename(filename)) {
+            socket.emit('frame_error', 'Invalid frame filename.');
+            return;
+        }
+        if (!listFrames().some(frame => frame.name === filename)) {
+            socket.emit('frame_error', 'Frame not found.');
+            return;
+        }
+        appConfig.activeFrame = filename;
+        saveConfig();
+        io.emit('frame_config', { active: appConfig.activeFrame });
+        addLog(`> Active frame set to [${filename}].`);
+    });
+
+    socket.on('delete_frame', (filename) => {
+        if (typeof filename !== 'string' || filename !== path.basename(filename)) {
+            socket.emit('frame_error', 'Invalid frame filename.');
+            return;
+        }
+
+        const framePath = path.join(framesFolder, filename);
+        if (!fs.existsSync(framePath) || !/\.(jpe?g|png|webp)$/i.test(filename)) {
+            socket.emit('frame_error', 'Frame not found.');
+            return;
+        }
+
+        try {
+            fs.unlinkSync(framePath);
+            if (appConfig.activeFrame === filename) {
+                appConfig.activeFrame = '';
+                saveConfig();
+                io.emit('frame_config', { active: '' });
+            }
+            io.emit('frame_list', listFrames());
+            addLog(`> Frame deleted: ${filename}`);
+        } catch (error) {
+            socket.emit('frame_error', 'Unable to delete the selected frame.');
+        }
     });
 
     socket.on('print_photo', (filename) => {
@@ -622,12 +647,19 @@ function waitForFile(filePath, timeoutMs = 5000) {
     });
 }
 
-async function generateCollage(photos, outputPath, filterType) {
+async function createCollage(photos, outputPath, filterType) {
     try {
+        const photoWidth = 560;
+        const photoHeight = 401;
+        const leftX = 21;
+        const rightX = 619;
+        const rowY = [144, 557, 971, 1385];
         const resizedImages = await Promise.all(
             photos.map(async (photoPath) => {
                 await waitForFile(photoPath);
-                let img = sharp(photoPath).resize(500, 375, { fit: 'cover' });
+                // The frame slots are fixed-size rectangles; fill them instead of
+                // cropping the camera image and leaving the slot geometry ambiguous.
+                let img = sharp(photoPath).resize(photoWidth, photoHeight, { fit: 'fill' });
                 
                 if (filterType === 'NOIR' || filterType === 'FILTER_1') {
                     img = img.grayscale().linear(1.25, -10);
@@ -640,19 +672,29 @@ async function generateCollage(photos, outputPath, filterType) {
             })
         );
         
-        await sharp({
-            create: { width: 1200, height: 1800, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 1 } }
-        }).composite([
-            { input: resizedImages[0], top: 100, left: 50 }, { input: resizedImages[1], top: 525, left: 50 },
-            { input: resizedImages[2], top: 950, left: 50 }, { input: resizedImages[3], top: 1375, left: 50 },
-            { input: resizedImages[0], top: 100, left: 650 }, { input: resizedImages[1], top: 525, left: 650 },
-            { input: resizedImages[2], top: 950, left: 650 }, { input: resizedImages[3], top: 1375, left: 650 }
-        ]).jpeg({ quality: 90 }).toFile(outputPath);
+        const backgroundInput = appConfig.activeFrame &&
+            fs.existsSync(path.join(framesFolder, appConfig.activeFrame))
+            ? await sharp(path.join(framesFolder, appConfig.activeFrame))
+                .resize(1200, 1800, { fit: 'fill' }).png().toBuffer()
+            : { create: { width: 1200, height: 1800, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 1 } } };
+        const photoLayers = [];
+        rowY.forEach((top, index) => {
+            photoLayers.push({ input: resizedImages[index], top, left: leftX });
+            photoLayers.push({ input: resizedImages[index], top, left: rightX });
+        });
+        await sharp(backgroundInput).composite(photoLayers).jpeg({ quality: 90 }).toFile(outputPath);
 
         photos.forEach(photoPath => { 
             if (fs.existsSync(photoPath)) { try { fs.unlinkSync(photoPath); } catch(e) {} }
         });
     } catch (error) { throw error; }
+}
+
+function listFrames() {
+    return fs.readdirSync(framesFolder)
+        .filter(name => /\.(jpe?g|png|webp)$/i.test(name))
+        .sort((a, b) => a.localeCompare(b))
+        .map(name => ({ name, url: `http://localhost:${PORT}/frames/${encodeURIComponent(name)}` }));
 }
 
 server.listen(PORT, () => console.log(` FLIK Master Backend running on port ${PORT}`));

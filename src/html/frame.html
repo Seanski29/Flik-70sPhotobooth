@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FLIK | Frame Library</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="http://localhost:3001/socket.io/socket.io.js"></script>
+    <style>
+        .frame-library { display: grid; grid-template-rows: minmax(0, 1fr) minmax(220px, 38%); gap: 14px; height: calc(100vh - 105px); min-height: 0; }
+        .frame-preview { min-height: 0; display: flex; align-items: center; justify-content: center; padding: 12px; background: rgba(0,0,0,.72); border: 1px solid #444; border-radius: 10px; }
+        .frame-preview img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 5px; }
+        .frame-library-panel { min-height: 0; display: flex; flex-direction: column; padding: 12px; background: rgba(0,0,0,.72); border: 1px solid #444; border-radius: 10px; }
+        .frame-library-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; color: #fff; }
+        .frame-library-header h3 { margin: 0; }
+        .frame-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; overflow-y: auto; min-height: 0; }
+        .frame-card { position: relative; padding: 4px; border: 2px solid transparent; border-radius: 7px; background: #171717; cursor: pointer; }
+        .frame-card.selected { border-color: #4ade80; box-shadow: 0 0 0 2px rgba(74,222,128,.2); }
+        .frame-card img { display: block; width: 100%; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 4px; }
+        .frame-card span { display: block; overflow: hidden; padding: 4px 2px 1px; color: #ddd; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+        .frame-card-delete { position: absolute; top: 7px; right: 7px; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; color: #fff; background: rgba(185, 28, 28, .9); cursor: pointer; font-size: 14px; line-height: 24px; }
+        .frame-card-delete:hover { background: #ef4444; }
+        .frame-empty { grid-column: 1 / -1; padding: 28px; color: #aaa; text-align: center; border: 1px dashed #555; border-radius: 7px; }
+        .frame-actions { display: flex; gap: 8px; }
+        .frame-actions button { padding: 8px 14px; border: 0; border-radius: 5px; color: #fff; font-weight: 700; cursor: pointer; }
+        .frame-upload { background: #2563eb; } .frame-save { background: #16a34a; }
+        @media (max-width: 900px) { .frame-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    </style>
+</head>
+<body class="app-layout">
+    <div class="page-loader" id="page-loader" role="status" aria-label="Loading frame library">
+        <div class="loader-sidebar"><div class="loader-block loader-logo"></div><div class="loader-line loader-nav"></div><div class="loader-line loader-nav"></div><div class="loader-line loader-nav"></div></div>
+        <div class="loader-content"><div class="loader-line loader-title"></div><div class="loader-line loader-subtitle"></div><div class="loader-block loader-panel-wide"></div></div>
+    </div>
+    <div id="sidebar-container"></div>
+    <main class="workspace">
+        <header class="workspace-header">
+            <div><h2 class="page-title">FRAME LIBRARY</h2><p class="page-subtitle">Choose the frame used for future print sessions</p></div>
+        </header>
+        <section class="frame-library">
+            <div class="frame-preview"><img id="activeFramePreview" alt="Selected frame preview"></div>
+            <div class="frame-library-panel">
+                <div class="frame-library-header">
+                    <h3>Uploaded Frames</h3>
+                    <div class="frame-actions">
+                        <input id="frameUpload" type="file" accept=".jpg,.jpeg,.png,.webp,image/*" hidden>
+                        <button class="frame-upload" type="button" onclick="document.getElementById('frameUpload').click()">Upload Frame</button>
+                        <button class="frame-save" type="button" onclick="saveActiveFrame()">Save</button>
+                    </div>
+                </div>
+                <div class="frame-grid" id="frameGrid"><div class="frame-empty">Loading frame library...</div></div>
+            </div>
+        </section>
+    </main>
+    <script src="../js/sidebar.js"></script>
+    <script src="../js/loader.js"></script>
+    <script>
+        const socket = io('http://localhost:3001');
+        const frameGrid = document.getElementById('frameGrid');
+        const preview = document.getElementById('activeFramePreview');
+        let selectedFrame = '';
+        let activeFrame = '';
+
+        socket.on('connect', () => socket.emit('request_frames'));
+        socket.on('frame_config', ({ active }) => {
+            activeFrame = active || '';
+            if (!selectedFrame) selectedFrame = activeFrame;
+            updatePreview();
+            renderFrames();
+        });
+        socket.on('frame_list', frames => {
+            window.frameLibrary = frames;
+            renderFrames();
+        });
+        socket.on('frame_error', message => alert(message));
+
+        function updatePreview() {
+            const frame = (window.frameLibrary || []).find(item => item.name === selectedFrame);
+            preview.src = frame ? frame.url : '';
+            preview.alt = frame ? `Preview of ${frame.name}` : 'No frame selected';
+        }
+        function renderFrames() {
+            const frames = window.frameLibrary || [];
+            frameGrid.innerHTML = '';
+            if (!frames.length) {
+                frameGrid.innerHTML = '<div class="frame-empty">No frames uploaded yet. Upload a JPG, PNG, or WebP frame to begin.</div>';
+                updatePreview();
+                return;
+            }
+            frames.forEach(frame => {
+                const card = document.createElement('div');
+                card.setAttribute('role', 'button');
+                card.setAttribute('tabindex', '0');
+                card.className = `frame-card${frame.name === selectedFrame ? ' selected' : ''}`;
+                card.innerHTML = `<img src="${frame.url}" alt="${frame.name}" loading="lazy"><span>${frame.name}</span><button class="frame-card-delete" type="button" title="Delete ${frame.name}" aria-label="Delete ${frame.name}">×</button>`;
+                card.addEventListener('click', () => { selectedFrame = frame.name; updatePreview(); renderFrames(); });
+                card.addEventListener('keydown', event => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        selectedFrame = frame.name;
+                        updatePreview();
+                        renderFrames();
+                    }
+                });
+                card.querySelector('.frame-card-delete').addEventListener('click', event => {
+                    event.stopPropagation();
+                    deleteFrame(frame.name);
+                });
+                frameGrid.appendChild(card);
+            });
+            updatePreview();
+        }
+        document.getElementById('frameUpload').addEventListener('change', event => {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => socket.emit('upload_frame', { name: file.name, data: reader.result });
+            reader.onerror = () => alert('Unable to read the selected frame.');
+            reader.readAsDataURL(file);
+            event.target.value = '';
+        });
+        function saveActiveFrame() {
+            if (!selectedFrame) { alert('Select a frame first.'); return; }
+            socket.emit('set_active_frame', selectedFrame);
+            activeFrame = selectedFrame;
+        }
+        function deleteFrame(filename) {
+            if (!confirm(`Delete "${filename}" from the frame library?`)) return;
+            socket.emit('delete_frame', filename);
+        }
+    </script>
+</body>
+</html>

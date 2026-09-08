@@ -9,13 +9,17 @@
     <style>
         /* CSS OVERRIDES TO PREVENT SCROLLING */
         body.app-layout, .workspace { height: 100vh; overflow: hidden; margin: 0; }
-        .dashboard-container { display: flex; height: calc(100vh - 75px); gap: 10px; overflow: hidden; }
-        .terminal-container { flex: 1; height: 100%; display: flex; flex-direction: column; }
+        .dashboard-container { display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(430px, .88fr); height: calc(100vh - 75px); gap: 12px; overflow: hidden; min-height: 0; }
+        .terminal-container { min-width: 0; min-height: 0; height: 100%; display: flex; flex-direction: column; }
         .terminal { flex: 1; overflow-y: auto; }
-        .right-column { flex: 1; display: flex; flex-direction: column; height: 100%; overflow: hidden; }
-        .preview-card { background: #1e1e1e; border-radius: 8px; margin-bottom: 5px; text-align: center; }
-        .preview-card img { max-height: 20vh; width: auto; object-fit: contain; }
-        .panel-box { padding: 8px 12px; margin-bottom: 5px; }
+        .right-column { width: 100%; min-width: 0; min-height: 0; display: grid; grid-template-rows: 205px auto minmax(0, 1fr); gap: 12px; height: 100%; overflow: hidden; }
+        .visual-row { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(120px, .7fr); gap: 8px; min-height: 0; }
+        .preview-card { min-width: 0; min-height: 0; background: rgba(0,0,0,.72); border: 1px solid #444; border-radius: 8px; margin: 0; padding: 6px; display: flex; align-items: center; justify-content: center; text-align: center; }
+        .preview-card img { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
+        .active-frame-card { min-width: 0; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; padding: 8px; color: #fff; background: rgba(0,0,0,.72); border: 1px solid #444; border-radius: 8px; }
+        .active-frame-card h3 { align-self: flex-start; margin: 0; }
+        .active-frame-card img { min-height: 0; max-width: 100%; height: 145px; object-fit: contain; border-radius: 4px; background: #000; }
+        .panel-box { padding: 8px 10px; margin: 0; min-height: 0; }
         .metric { padding: 2px 0; }
         h3 { margin: 3px 0; font-size: 13px; }
         .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; }
@@ -30,6 +34,21 @@
         .printer-settings-actions .cancel { background: #555; }
         .printer-settings-actions .save { background: #2563eb; }
         .printer-status { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .dashboard-frame-preview { display: flex; align-items: center; gap: 10px; }
+        .dashboard-frame-preview img { width: 44px; height: 66px; object-fit: cover; border-radius: 4px; border: 1px solid #666; background: #000; }
+        .dashboard-frame-preview a { color: #4ade80; font-size: 10px; }
+        .active-frame-card a { color: #4ade80; font-size: 10px; }
+        .right-column > .panel-box { margin-top: 3px; }
+        .compact-status { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: center; gap: 8px; }
+        .compact-status .dashboard-frame-preview { grid-column: span 2; }
+        .operator-panel { gap: 5px; overflow: hidden; }
+        .operator-panel h3 { margin: 2px 0 3px; }
+        .operator-panel .grid-3 { flex-shrink: 0; }
+        @media (max-width: 1050px) {
+            .dashboard-container { grid-template-columns: minmax(0, 1fr) minmax(365px, .9fr); }
+            .visual-row { grid-template-columns: minmax(0, 1.2fr) minmax(105px, .75fr); }
+            .active-frame-card img { height: 125px; }
+        }
 
         /* Slider */
         input[type=range] { appearance: none; -webkit-appearance: none; width: 100%; background: transparent; margin-top: 5px; }
@@ -79,13 +98,20 @@
             </div>
 
             <div class="right-column">
-                <div class="preview-card">
-                    <img id="webcam-preview" class="filter-NORMAL" src="http://localhost:5513/liveview.jpg">
+                <div class="visual-row">
+                    <div class="preview-card">
+                        <img id="webcam-preview" class="filter-NORMAL" src="http://localhost:5513/liveview.jpg">
+                    </div>
+                    <div class="active-frame-card">
+                        <h3>Current Frame</h3>
+                        <img id="dashboardFramePreview" alt="Current active frame">
+                        <a href="frame.html">Manage Frames</a>
+                    </div>
                 </div>
 
                 <div class="panel-box">
-                    <h3>Live Status</h3>
-                    <div class="grid-3">
+                    <h3> Live Status </h3>
+                    <div class="compact-status">
                         <div class="metric">Balance: <span class="metric-value" id="balanceDisplay">0 PHP</span></div>
                         <div class="metric">Filter: <span class="metric-value" id="filterDisplay">NORMAL</span></div>
                         <div class="metric">Status: <span class="metric-value" id="sessionDisplay">IDLE</span></div>
@@ -93,7 +119,7 @@
                     </div>
                 </div>
 
-                <div class="panel-box operator-panel" style="flex: 1; overflow-y: auto;">
+                <div class="panel-box operator-panel">
                     <h3>Manual Filter Override</h3>
                     <div class="grid-3">
                         <button class="btn-op btn-filter" onclick="setManualFilter('NORMAL')">Normal</button>
@@ -154,6 +180,7 @@
         const printerSelect = document.getElementById('printerSelect');
         const printerModal = document.getElementById('printerSettingsModal');
         const printerDisplay = document.getElementById('printerDisplay');
+        const dashboardFramePreview = document.getElementById('dashboardFramePreview');
         let configuredPrinterName = '';
         
         const countdownAudio = new Audio('../../assets/10_sc.mp3');
@@ -244,6 +271,10 @@
             if (printers.some(printer => printer.Name === currentValue)) {
                 printerSelect.value = currentValue;
             }
+        });
+
+        socket.on('frame_config', ({ active }) => {
+            dashboardFramePreview.src = active ? `http://localhost:3001/frames/${encodeURIComponent(active)}` : '';
         });
 
         function openPrinterSettings() {
