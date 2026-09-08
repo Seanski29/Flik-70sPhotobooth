@@ -97,9 +97,12 @@
             background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 1000;
         }
         .modal-content {
-            background: #222; color: #ffffff; padding: 25px; border-radius: 8px; max-width: 500px; width: 90%; border: 1px solid #444;
+            background: #222; color: #ffffff; padding: 25px; border-radius: 8px; max-width: 700px; width: 90%; border: 1px solid #444;
         }
-        .modal-scroll-area { max-height: 300px; overflow-y: auto; margin-bottom: 20px; color: #cccccc; }
+        .modal-scroll-area { max-height: 55vh; overflow-y: auto; margin-bottom: 20px; color: #cccccc; line-height: 1.55; }
+        .modal-scroll-area h3 { color: #ffffff; font-size: 16px; margin: 18px 0 6px; }
+        .modal-scroll-area h3:first-child { margin-top: 0; }
+        .modal-scroll-area ul { padding-left: 22px; }
         
         .error-text { color: #ef4444; font-size: 14px; margin-top: 10px; font-weight: bold; }
         .success-text { color: #4ade80; font-size: 14px; margin-top: 10px; font-weight: bold; }
@@ -156,10 +159,21 @@
                 <div class="about-info">
                     <p><strong>Version:</strong> 1.0.0</p>
                     <p><strong>Developed For:</strong> Scratch Solutions Inc.</p>
+                    <p class="subtitle">FLIK revives the raw magic of classic photography through a tactile, screen-free booth ritual: mechanical controls, warm indicator lights, deliberate pacing, and physical memories to take home.</p>
                 </div>
                 <div class="legal-links">
                     <button id="btn-privacy" class="btn-text">Privacy Policy</button>
                     <button id="btn-eula" class="btn-text">End User License Agreement</button>
+                </div>
+            </section>
+
+            <section class="settings-card">
+                <h2>Security &amp; Operations Documents</h2>
+                <p class="subtitle">Review the safeguards and operating responsibilities for event use.</p>
+                <div class="legal-links">
+                    <button id="btn-security" class="btn-text">Information Security</button>
+                    <button id="btn-retention" class="btn-text">Data Retention &amp; Deletion</button>
+                    <button id="btn-incident" class="btn-text">Incident Response</button>
                 </div>
             </section>
         </div>
