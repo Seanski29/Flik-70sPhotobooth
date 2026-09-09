@@ -182,6 +182,11 @@
         const printerDisplay = document.getElementById('printerDisplay');
         const dashboardFramePreview = document.getElementById('dashboardFramePreview');
         let configuredPrinterName = '';
+        let filterPresets = {
+            NORMAL: { intensity: 100, grayscale: 0, sepia: 0, contrast: 100, brightness: 100, saturation: 100, hue: 0, invert: 0, blur: 0 },
+            NOIR: { intensity: 100, grayscale: 100, sepia: 0, contrast: 140, brightness: 95, saturation: 100, hue: 0, invert: 0, blur: 0 },
+            FILM_II: { intensity: 100, grayscale: 0, sepia: 20, contrast: 110, brightness: 100, saturation: 180, hue: -5, invert: 0, blur: 0 }
+        };
         
         const countdownAudio = new Audio('../../assets/10_sc.mp3');
         const bgAudio = new Audio('../../assets/bg_music.mp3');
@@ -348,12 +353,26 @@
             if (cleanName === 'FILTER_2' || cleanName === 'VINTAGE') cleanName = 'FILM_II';
 
             document.getElementById('filterDisplay').innerText = cleanName;
-            liveView.className = ''; 
-            if (cleanName === 'NOIR') liveView.classList.add('filter-NOIR');
-            else if (cleanName === 'FILM_II') liveView.classList.add('filter-FILM-II');
-            else liveView.classList.add('filter-NORMAL');
+            const filter = filterPresets[cleanName] || filterPresets.NORMAL;
+            const amount = Number(filter.intensity) / 100;
+            const scale = (value, neutral) => neutral + (Number(value) - neutral) * amount;
+            liveView.className = '';
+            liveView.style.filter = [
+                `grayscale(${scale(filter.grayscale, 0)}%)`,
+                `sepia(${scale(filter.sepia, 0)}%)`,
+                `contrast(${scale(filter.contrast, 100)}%)`,
+                `brightness(${scale(filter.brightness, 100)}%)`,
+                `saturate(${scale(filter.saturation, 100)}%)`,
+                `hue-rotate(${Number(filter.hue) * amount}deg)`,
+                `invert(${scale(filter.invert || 0, 0)}%)`,
+                `blur(${Number(filter.blur || 0) * amount}px)`
+            ].join(' ');
         }
 
+        socket.on('filter_config', (filters) => {
+            filterPresets = { ...filterPresets, ...filters };
+            applyFilterToPreview(document.getElementById('filterDisplay').innerText);
+        });
         socket.on('hardware_update', (data) => {
             if (data.type === 'balance') {
                 document.getElementById('balanceDisplay').innerText = `${data.value} PHP`;

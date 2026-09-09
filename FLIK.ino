@@ -1,14 +1,16 @@
 #include <Arduino.h>
 
 // --- PIN DEFINITIONS ---
-const int PIN_BILL_ACCEPTOR = 2; // Hardware Interrupt Pin (Bill Acceptor Pulse)
+const int PIN_BILL_ACCEPTOR = 2; // Hardware Interrupt Pin
 const int PIN_BUTTON        = 4; // Arcade Button Switch
-const int PIN_LED_RED       = 5; // Arcade Button LED (Red / Ready Status)
-const int PIN_LED_GREEN     = 6; // Printer Success LED (Green / Print Status)
-const int PIN_SWITCH_A      = 7; // Toggle Switch Left (FILTER_1)
-const int PIN_SWITCH_B      = 8; // Toggle Switch Right (FILTER_2)
+const int PIN_LED_RED_SYS   = 5; // System Status (Always ON, off when ready/active)
+const int PIN_LED_GREEN     = 6; // Printer Success LED
+const int PIN_SWITCH_A      = 7; // Toggle Switch Left
+const int PIN_SWITCH_B      = 8; // Toggle Switch Right
+const int PIN_LED_ARCADE    = 9; // Arcade Button LED (Lights up at 200 PHP)
 
 // --- FINANCIAL SETTINGS ---
+// The bill acceptor handles the 50 PHP math (e.g., sending 5 pulses if 1 pulse = 10 PHP).
 const int phpPerPulse = 10;      
 
 // --- STATE VARIABLES ---
@@ -21,31 +23,29 @@ String lastFilter = "";
 void setup() {
   Serial.begin(115200);
 
-  // Configure switch inputs using internal pull-up resistors
+  // Configure switch inputs
   pinMode(PIN_BILL_ACCEPTOR, INPUT_PULLUP);
   pinMode(PIN_BUTTON, INPUT_PULLUP);
   pinMode(PIN_SWITCH_A, INPUT_PULLUP);
   pinMode(PIN_SWITCH_B, INPUT_PULLUP);
 
   // Configure LED outputs
-  pinMode(PIN_LED_RED, OUTPUT);
+  pinMode(PIN_LED_RED_SYS, OUTPUT);
   pinMode(PIN_LED_GREEN, OUTPUT);
+  pinMode(PIN_LED_ARCADE, OUTPUT);
 
-  // Default State: Both LEDs OFF waiting for money
-  digitalWrite(PIN_LED_RED, LOW);
+  // Default Boot State: System Red ON, Arcade OFF, Green OFF
+  digitalWrite(PIN_LED_RED_SYS, HIGH);
+  digitalWrite(PIN_LED_ARCADE, LOW);
   digitalWrite(PIN_LED_GREEN, LOW); 
 
-  // Hardware interrupt for money counting
   attachInterrupt(digitalPinToInterrupt(PIN_BILL_ACCEPTOR), pulseInterrupt, FALLING);
-  
   Serial.println("SYSTEM_READY");
 }
 
 void loop() {
-  // 1. Monitor filter switch state
   checkFilterState();
 
-  // 2. Calculate and Report Balance (Server.js handles the deductions)
   currentBalance = totalPulses * phpPerPulse;
 
   if (currentBalance != lastReportedBalance) {
@@ -54,21 +54,17 @@ void loop() {
     lastReportedBalance = currentBalance;
   }
 
-  // 3. Listen for Arcade Button click
   if (digitalRead(PIN_BUTTON) == LOW) {
     if (!isSessionActive) {
       Serial.println("BUTTON_CLICKED"); 
     }
-    delay(500); // Debounce to prevent double-clicks spamming the server
+    delay(500); 
   }
 }
-
-// --- HARDWARE FUNCTIONS ---
 
 void checkFilterState() {
   String newFilter = "NORMAL"; 
 
-  // Read the 3-Way Switch positions
   if (digitalRead(PIN_SWITCH_A) == LOW) {
     newFilter = "FILTER_1";
   } else if (digitalRead(PIN_SWITCH_B) == LOW) {
@@ -86,7 +82,6 @@ void pulseInterrupt() {
   static unsigned long lastPulseTime = 0;
   unsigned long currentTime = millis();
   
-  // 50ms debounce for the bill acceptor pulses
   if (currentTime - lastPulseTime > 50) { 
     totalPulses++;
     lastPulseTime = currentTime;
@@ -99,26 +94,34 @@ void serialEvent() {
     String command = Serial.readStringUntil('\n');
     command.trim();
     
-    // --- RED LED CONTROLS (Session & Balance) ---
-    if (command == "READY_TO_START") {
-       digitalWrite(PIN_LED_RED, HIGH); // 200 PHP reached, light up Arcade Button
-       isSessionActive = false;
-    } 
-    else if (command == "IDLE") {
-       digitalWrite(PIN_LED_RED, LOW);  // Not enough money, keep Arcade Button off
+    // --- LED LOGIC STATES ---
+    if (command == "IDLE") {
+       // Not enough money
+       digitalWrite(PIN_LED_RED_SYS, HIGH);  // System Red ON
+       digitalWrite(PIN_LED_ARCADE, LOW);    // Arcade Red OFF
        isSessionActive = false;
     }
+    else if (command == "READY_TO_START") {
+       // 200 PHP reached
+       digitalWrite(PIN_LED_RED_SYS, LOW);   // System Red OFF
+       digitalWrite(PIN_LED_ARCADE, HIGH);   // Arcade Red ON
+       isSessionActive = false;
+    } 
     else if (command == "SESSION_START") {
-       digitalWrite(PIN_LED_RED, LOW);  // Turn off Arcade Button during photo session
+       // Camera is running
+       digitalWrite(PIN_LED_RED_SYS, LOW);   // System Red OFF
+       digitalWrite(PIN_LED_ARCADE, LOW);    // Arcade Red OFF
        isSessionActive = true;
     }
     
-    // --- GREEN LED CONTROLS (Printer Status) ---
+    // --- GREEN LED (Printer) ---
     else if (command == "GREEN_ON") {
-       digitalWrite(PIN_LED_GREEN, HIGH); // Printer triggered!
+       digitalWrite(PIN_LED_GREEN, HIGH); 
     } 
     else if (command == "GREEN_OFF") {
-       digitalWrite(PIN_LED_GREEN, LOW);  // 10 seconds are up
+       digitalWrite(PIN_LED_GREEN, LOW);  
+       // Once printer finishes, return to IDLE state (System Red ON)
+       digitalWrite(PIN_LED_RED_SYS, HIGH);
     }
   }
 }

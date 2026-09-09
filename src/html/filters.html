@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FLIK | Filter Studio</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="http://localhost:3001/socket.io/socket.io.js"></script>
+</head>
+<body class="app-layout">
+    <div class="page-loader" id="page-loader" role="status" aria-label="Loading filter studio">
+        <div class="loader-sidebar"><div class="loader-block loader-logo"></div><div class="loader-line loader-nav"></div><div class="loader-line loader-nav"></div><div class="loader-line loader-nav"></div></div>
+        <div class="loader-content"><div class="loader-line loader-title"></div><div class="loader-line loader-subtitle"></div><div class="loader-block loader-panel-wide"></div></div>
+    </div>
+    <div id="sidebar-container"></div>
+    <main class="workspace">
+        <header class="workspace-header">
+            <div>
+                <h2 class="page-title">FILTER STUDIO</h2>
+                <p class="page-subtitle">Tune the booth look without changing the active session</p>
+            </div>
+        </header>
+
+        <div class="filter-studio">
+            <section class="filter-preview-card">
+                <div class="filter-preview-heading">
+                    <div>
+                        <h2>Camera Preview</h2>
+                        <p>Preview changes are local until you select Save Filters.</p>
+                    </div>
+                    <span id="hardware-status" class="filter-status">Waiting for saved presets</span>
+                </div>
+                <img id="filter-preview" src="http://localhost:5513/liveview.jpg" alt="Live camera preview">
+            </section>
+
+            <section class="filter-editor-card">
+                <div class="filter-editor-toolbar">
+                    <div>
+                        <label for="filter-select">Preset</label>
+                        <select id="filter-select">
+                            <option value="NORMAL">Normal</option>
+                            <option value="NOIR">Noir</option>
+                            <option value="FILM_II">Film II</option>
+                        </select>
+                    </div>
+                    <div class="filter-priority-note"><strong>Note:</strong> Click Reset Preset First to see the default filter settings</div>
+                    <div class="filter-actions">
+                        <button id="reset-filter" class="btn-secondary" type="button">Reset Preset</button>
+                        <button id="save-filters" class="btn-primary" type="button">Save Filters</button>
+                    </div>
+                </div>
+
+                <div class="filter-controls">
+                    <div class="filter-control"><label for="intensity">Intensity <output data-output="intensity"></output></label><input id="intensity" type="range" min="0" max="100" step="1"></div>
+                    <div class="filter-control"><label for="grayscale">Grayscale <output data-output="grayscale"></output></label><input id="grayscale" type="range" min="0" max="100" step="1"></div>
+                    <div class="filter-control"><label for="sepia">Sepia <output data-output="sepia"></output></label><input id="sepia" type="range" min="0" max="100" step="1"></div>
+                    <div class="filter-control"><label for="contrast">Contrast <output data-output="contrast"></output></label><input id="contrast" type="range" min="0" max="300" step="1"></div>
+                    <div class="filter-control"><label for="brightness">Brightness <output data-output="brightness"></output></label><input id="brightness" type="range" min="0" max="300" step="1"></div>
+                    <div class="filter-control"><label for="saturation">Saturation <output data-output="saturation"></output></label><input id="saturation" type="range" min="0" max="300" step="1"></div>
+                    <div class="filter-control"><label for="hue">Hue rotate <output data-output="hue"></output></label><input id="hue" type="range" min="-180" max="180" step="1"></div>
+                    <div class="filter-control"><label for="invert">Invert <output data-output="invert"></output></label><input id="invert" type="range" min="0" max="100" step="1"></div>
+                    <div class="filter-control"><label for="blur">Soft focus <output data-output="blur"></output></label><input id="blur" type="range" min="0" max="20" step="0.1"></div>
+                </div>
+                <p id="filter-message" class="filter-message" role="status"></p>
+            </section>
+        </div>
+    </main>
+    <script src="../js/sidebar.js"></script>
+    <script src="../js/filters.js"></script>
+    <script src="../js/loader.js"></script>
+</body>
+</html>

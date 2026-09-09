@@ -251,6 +251,35 @@ input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 5px; cur
 .legal-links { margin-top: 15px; display: flex; gap: 15px; }
 .legal-links button { background: none; border: none; color: #4ade80; text-decoration: underline; cursor: pointer; font-size: 14px; padding: 0; }
 
+/* --- FILTER STUDIO --- */
+.filter-studio { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 0 28px; color: #fff; }
+.filter-preview-card, .filter-editor-card { max-width: 1100px; margin: 0 auto 16px; padding: 18px; background: rgba(0, 0, 0, 0.78); border: 1px solid #444; border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); }
+.filter-preview-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 12px; }
+.filter-preview-heading h2 { margin: 0 0 4px; font-size: 18px; }
+.filter-preview-heading p, .filter-priority-note { color: #bbb; font-size: 12px; }
+.filter-status { color: #4ade80; font-size: 12px; white-space: nowrap; }
+#filter-preview { display: block; width: min(620px, 100%); max-height: 330px; min-height: 190px; object-fit: contain; margin: 0 auto; border: 1px solid #555; border-radius: 6px; background: #111; transform: scaleX(-1); }
+.filter-editor-toolbar { display: flex; align-items: flex-end; gap: 16px; margin-bottom: 20px; }
+.filter-editor-toolbar label, .filter-control label { display: flex; justify-content: space-between; gap: 10px; color: #ddd; font-size: 12px; font-weight: 600; margin-bottom: 6px; }
+#filter-select, #filter-name { min-width: 180px; padding: 9px; color: #fff; background: #292929; border: 1px solid #555; border-radius: 5px; }
+.filter-priority-note { flex: 1; padding-bottom: 9px; }
+.filter-priority-note strong { color: #fbbf24; }
+.filter-actions { display: flex; gap: 8px; }
+.filter-actions button { width: auto; margin: 0; padding: 9px 14px; font-size: 12px; border: 0; border-radius: 5px; color: #fff; cursor: pointer; font-weight: 700; }
+.filter-actions .btn-secondary { background: #555; }
+.filter-actions .btn-primary { background: #2563eb; }
+.filter-controls { display: grid; grid-template-columns: repeat(4, minmax(140px, 1fr)); gap: 16px; }
+.filter-control input[type="text"] { width: 100%; padding: 9px; color: #fff; background: rgba(255, 255, 255, .08); border: 1px solid #555; border-radius: 5px; }
+.filter-control output { color: #4ade80; font-weight: 700; }
+.filter-message { min-height: 18px; margin: 16px 0 0; color: #fbbf24; font-size: 12px; }
+.filter-message.success { color: #4ade80; }
+.filter-message.error { color: #f87171; }
+@media (max-width: 900px) {
+    .filter-editor-toolbar { flex-wrap: wrap; }
+    .filter-priority-note { flex-basis: 100%; order: 3; }
+    .filter-controls { grid-template-columns: repeat(2, minmax(140px, 1fr)); }
+}
+
 /* --- RESPONSIVE MEDIA QUERIES --- */
 @media (max-width: 1200px) {
     .sys-sidebar { width: 80px; transition: width 0.3s ease; }

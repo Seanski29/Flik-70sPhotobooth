@@ -1,5 +1,37 @@
 {
   "targetPrinter": "DS-RX1",
   "printerName": "DS-RX1",
-  "activeFrame": "1.png"
+  "activeFrame": "1.png",
+  "filters": {
+    "NORMAL": {
+      "name": "Normal",
+      "intensity": 100,
+      "grayscale": 0,
+      "sepia": 0,
+      "contrast": 100,
+      "brightness": 100,
+      "saturation": 100,
+      "hue": 0
+    },
+    "NOIR": {
+      "name": "Noir",
+      "intensity": 15,
+      "grayscale": 100,
+      "sepia": 0,
+      "contrast": 140,
+      "brightness": 95,
+      "saturation": 100,
+      "hue": 0
+    },
+    "FILM_II": {
+      "name": "Film II",
+      "intensity": 100,
+      "grayscale": 0,
+      "sepia": 20,
+      "contrast": 110,
+      "brightness": 100,
+      "saturation": 180,
+      "hue": -5
+    }
+  }
 }

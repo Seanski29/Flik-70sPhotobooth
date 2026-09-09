@@ -41,7 +41,39 @@ const statsFilePath = path.join(__dirname, 'stats.json');
 const configFilePath = path.join(__dirname, 'config.json');
 let totalRevenue = 0;
 let totalSessions = 0;
-let appConfig = { targetPrinter: '', printerName: '', activeFrame: '' };
+const DEFAULT_FILTERS = {
+    NORMAL: { name: 'Normal', intensity: 100, grayscale: 0, sepia: 0, contrast: 100, brightness: 100, saturation: 100, hue: 0, invert: 0, blur: 0 },
+    NOIR: { name: 'Noir', intensity: 100, grayscale: 100, sepia: 0, contrast: 140, brightness: 95, saturation: 100, hue: 0, invert: 0, blur: 0 },
+    FILM_II: { name: 'Film II', intensity: 100, grayscale: 0, sepia: 20, contrast: 110, brightness: 100, saturation: 180, hue: -5, invert: 0, blur: 0 }
+};
+let appConfig = { targetPrinter: '', printerName: '', activeFrame: '', filters: DEFAULT_FILTERS };
+
+function normalizeFilter(filter, fallback) {
+    const source = filter && typeof filter === 'object' ? filter : {};
+    const number = (value, defaultValue, min, max) => {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : defaultValue;
+    };
+    return {
+        name: typeof source.name === 'string' && source.name.trim() ? source.name.trim().slice(0, 40) : fallback.name,
+        intensity: number(source.intensity, fallback.intensity, 0, 100),
+        grayscale: number(source.grayscale, fallback.grayscale, 0, 100),
+        sepia: number(source.sepia, fallback.sepia, 0, 100),
+        contrast: number(source.contrast, fallback.contrast, 0, 300),
+        brightness: number(source.brightness, fallback.brightness, 0, 300),
+        saturation: number(source.saturation, fallback.saturation, 0, 300),
+        hue: number(source.hue, fallback.hue, -180, 180),
+        invert: number(source.invert, fallback.invert, 0, 100),
+        blur: number(source.blur, fallback.blur, 0, 20)
+    };
+}
+
+function normalizeFilters(filters) {
+    return Object.keys(DEFAULT_FILTERS).reduce((result, key) => {
+        result[key] = normalizeFilter(filters && filters[key], DEFAULT_FILTERS[key]);
+        return result;
+    }, {});
+}
 
 function loadConfig() {
     try {
@@ -49,12 +81,13 @@ function loadConfig() {
             appConfig = { ...appConfig, ...JSON.parse(fs.readFileSync(configFilePath, 'utf8')) };
             appConfig.targetPrinter = appConfig.targetPrinter || appConfig.printerName || '';
             appConfig.printerName = appConfig.targetPrinter;
+            appConfig.filters = normalizeFilters(appConfig.filters);
         } else {
             saveConfig();
         }
     } catch (err) {
         console.error('Failed to read config.json:', err);
-        appConfig = { targetPrinter: '', printerName: '', activeFrame: '' };
+        appConfig = { targetPrinter: '', printerName: '', activeFrame: '', filters: normalizeFilters() };
     }
 }
 
@@ -93,6 +126,7 @@ loadStats();
 let currentSessionPhotos = [];
 let activeFilter = 'NORMAL'; 
 let lockedSessionFilter = 'NORMAL'; 
+let lockedSessionFilterConfig = normalizeFilter(DEFAULT_FILTERS.NORMAL, DEFAULT_FILTERS.NORMAL);
 let sessionInProgress = false;
 
 let arduinoConnected = false; 
@@ -222,7 +256,7 @@ function capturePhoto() {
                 const collagePath = path.join(masterFolder, collageName);
                                 
                 try {
-                    await createCollage(currentSessionPhotos, collagePath, lockedSessionFilter);
+                    await createCollage(currentSessionPhotos, collagePath, lockedSessionFilterConfig);
                     const imageUrl = `http://localhost:3001/archive/${collageName}`;
                     
                     io.emit('collage_ready', imageUrl);
@@ -274,6 +308,7 @@ async function startSessionLoop(isFreePlay = false) {
     }
 
     lockedSessionFilter = activeFilter;
+    lockedSessionFilterConfig = normalizeFilter(appConfig.filters[activeFilter], DEFAULT_FILTERS[activeFilter] || DEFAULT_FILTERS.NORMAL);
     addLog(`>  Diagnostics passed. System Secured. Filter locked to: ${lockedSessionFilter}`);
     
     if (!isFreePlay) {
@@ -441,6 +476,7 @@ io.on('connection', (socket) => {
         socket.emit('sync_timer', countdownTimerStart); 
         socket.emit('printer_config', { target: appConfig.printerName });
         socket.emit('frame_config', { active: appConfig.activeFrame });
+        socket.emit('filter_config', appConfig.filters);
         socket.emit('frame_list', listFrames());
         listInstalledPrinters().then(printers => socket.emit('printer_list', printers));
     });
@@ -456,6 +492,17 @@ io.on('connection', (socket) => {
         saveConfig();
         io.emit('printer_config', { target: appConfig.printerName });
         addLog(`> 🖨️ Target printer set to [${appConfig.printerName || 'None'}].`);
+    });
+
+    socket.on('save_filters', (filters) => {
+        if (!filters || typeof filters !== 'object') {
+            socket.emit('filter_error', 'Invalid filter settings.');
+            return;
+        }
+        appConfig.filters = normalizeFilters(filters);
+        saveConfig();
+        io.emit('filter_config', appConfig.filters);
+        addLog('> Filter presets saved. Hardware toggle remains the session priority.');
     });
 
     socket.on('request_frames', () => {
@@ -540,7 +587,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('set_filter', (filterName) => {
-        if (!sessionInProgress) {
+        if (!sessionInProgress && Object.prototype.hasOwnProperty.call(DEFAULT_FILTERS, filterName)) {
             activeFilter = filterName;
             io.emit('hardware_update', { type: 'filter', value: `FILTER: ${filterName}` });
             addLog(`>  OVERRIDE: Filter set to ${filterName}`);
@@ -647,7 +694,7 @@ function waitForFile(filePath, timeoutMs = 5000) {
     });
 }
 
-async function createCollage(photos, outputPath, filterType) {
+async function createCollage(photos, outputPath, filterConfig) {
     try {
         const photoWidth = 560;
         const photoHeight = 401;
@@ -661,12 +708,35 @@ async function createCollage(photos, outputPath, filterType) {
                 // cropping the camera image and leaving the slot geometry ambiguous.
                 let img = sharp(photoPath).resize(photoWidth, photoHeight, { fit: 'fill' });
                 
-                if (filterType === 'NOIR' || filterType === 'FILTER_1') {
-                    img = img.grayscale().linear(1.25, -10);
-                } 
-                else if (filterType === 'FILM_II' || filterType === 'FILTER_2') {
-                    img = img.modulate({ saturation: 1.8, brightness: 1.05 })
-                            .recomb([ [1.1, 0.0, 0.0], [0.0, 1.05, 0.0], [0.0, 0.0, 0.9] ]);
+                const filter = filterConfig || appConfig.filters.NORMAL;
+                const amount = filter.intensity / 100;
+                const grayscale = filter.grayscale * amount;
+                const brightness = 1 + ((filter.brightness / 100) - 1) * amount;
+                const saturation = 1 + ((filter.saturation / 100) - 1) * amount;
+                const contrast = 1 + ((filter.contrast / 100) - 1) * amount;
+                const invert = (filter.invert * amount) / 100;
+                const gray = grayscale / 100;
+                img = img.recomb([
+                    [1 - gray + 0.299 * gray, 0.587 * gray, 0.114 * gray],
+                    [0.299 * gray, 1 - gray + 0.587 * gray, 0.114 * gray],
+                    [0.299 * gray, 0.587 * gray, 1 - gray + 0.114 * gray]
+                ]).modulate({ saturation: Math.max(0, saturation), brightness: Math.max(0, brightness) })
+                    .linear(Math.max(0, contrast), 128 * (1 - Math.max(0, contrast)));
+                if (invert > 0) {
+                img = img.recomb([
+                    [1 - 2 * invert, 0, 0],
+                    [0, 1 - 2 * invert, 0],
+                    [0, 0, 1 - 2 * invert]
+                ]).linear(1, 255 * invert);
+                }
+                if (filter.blur > 0) img = img.blur(filter.blur * amount);
+                if (filter.sepia > 0) {
+                    const sepia = (filter.sepia * amount) / 100;
+                    img = img.recomb([
+                        [1 - 0.607 * sepia, 0.769 * sepia, 0.189 * sepia],
+                        [0.349 * sepia, 1 - 0.314 * sepia, 0.168 * sepia],
+                        [0.272 * sepia, 0.534 * sepia, 1 - 0.869 * sepia]
+                    ]);
                 }
                 return img.toBuffer();
             })
