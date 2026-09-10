@@ -6,73 +6,185 @@
     <title>FLIK | The Vault</title>
     <link rel="stylesheet" href="../css/style.css">
     <script src="http://localhost:3001/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        .pricing-card, .ledger-card { margin-top: 22px; padding: 22px; background: rgba(0,0,0,.25); border: 1px solid #444; border-radius: 8px; color: #fff; }
+        .pricing-card label { display: flex; justify-content: space-between; color: #ddd; font-weight: bold; }
+        .price-options { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0; }
+        .price-options button { min-width: 78px; padding: 10px 14px; border: 1px solid #666; border-radius: 5px; color: #fff; background: #333; cursor: pointer; font-weight: bold; }
+        .price-options button.active, .price-options button:hover { background: #2563eb; border-color: #60a5fa; }
+        .pricing-actions { display: flex; align-items: center; gap: 12px; }
+        .pricing-actions button, .modal-actions button { padding: 9px 16px; border: 0; border-radius: 5px; color: #fff; background: #2563eb; cursor: pointer; font-weight: bold; }
+        .ledger-table { width: 100%; border-collapse: collapse; }
+        .ledger-table th, .ledger-table td { padding: 12px; border-bottom: 1px solid #444; text-align: left; }
+        .ledger-table tbody tr { cursor: pointer; }
+        .ledger-table tbody tr:hover { background: rgba(255,255,255,.08); }
+        .report-modal { display: none; position: fixed; inset: 0; z-index: 9000; align-items: center; justify-content: center; background: rgba(0,0,0,.78); }
+        .report-modal-box { width: min(700px, calc(100vw - 40px)); max-height: 85vh; overflow: auto; padding: 24px; color: #fff; background: #1e1e1e; border: 1px solid #444; border-radius: 10px; }
+        .report-modal-header, .modal-actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+        .report-modal-header h2 { margin: 0 0 16px; }
+        .report-close { color: #fff; background: transparent; border: 0; font-size: 24px; cursor: pointer; }
+        .breakdown-table { width: 100%; border-collapse: collapse; margin: 8px 0 20px; }
+        .breakdown-table th, .breakdown-table td { padding: 9px; border-bottom: 1px solid #444; text-align: left; }
+    </style>
 </head>
 <body class="app-layout">
-
     <div class="page-loader" id="page-loader" role="status" aria-label="Loading revenue">
-        <div class="loader-sidebar">
-            <div class="loader-block loader-logo"></div>
-            <div class="loader-line loader-nav"></div>
-            <div class="loader-line loader-nav"></div>
-            <div class="loader-line loader-nav"></div>
-            <div class="loader-line loader-nav"></div>
-        </div>
-        <div class="loader-content">
-            <div class="loader-line loader-title"></div>
-            <div class="loader-line loader-subtitle"></div>
-            <div style="display: flex; gap: 30px;">
-                <div class="loader-block loader-panel" style="height: 190px;"></div>
-                <div class="loader-block loader-panel" style="height: 190px;"></div>
-            </div>
-        </div>
+        <div class="loader-sidebar"><div class="loader-block loader-logo"></div><div class="loader-line loader-nav"></div><div class="loader-line loader-nav"></div><div class="loader-line loader-nav"></div><div class="loader-line loader-nav"></div></div>
+        <div class="loader-content"><div class="loader-line loader-title"></div><div class="loader-line loader-subtitle"></div><div class="loader-block loader-panel-wide"></div></div>
     </div>
-
-    <div id="sidebar-container"></div> 
-
+    <div id="sidebar-container"></div>
     <main class="workspace">
         <header class="workspace-header">
-            <div>
-                <h2 class="page-title">REVENUE</h2>
-                <p class="page-subtitle">Lifetime Financial Overview & Analytics</p>
-            </div>
+            <div><h2 class="page-title">REVENUE</h2><p class="page-subtitle">Lifetime Financial Overview & Analytics</p></div>
         </header>
-
         <div class="stats-container">
-            <div class="stat-card">
-                <h3>Total Lifetime Revenue</h3>
-                <div class="stat-value" id="totalRevenue">0 <span class="stat-currency">PHP</span></div>
-            </div>
-            
-            <div class="stat-card">
-                <h3>Total Sessions Completed</h3>
-                <div class="stat-value stat-sessions" id="totalSessions">0</div>
-            </div>
+            <div class="stat-card"><h3>Total Revenue</h3><div class="stat-value" id="totalRevenue">0 <span class="stat-currency">PHP</span></div></div>
+            <div class="stat-card"><h3>Total Sessions Completed</h3><div class="stat-value stat-sessions" id="totalSessions">0</div></div>
         </div>
-        
-        <div style="text-align: right;">
-            <button class="btn-danger" onclick="resetRevenue()">Reset Vault (Clear All Data)</button>
-        </div>
+        <section class="pricing-card">
+            <h3>Pricing Configuration</h3>
+            <label><span>Session price</span><span><span id="priceValue">200</span> PHP</span></label>
+            <div class="price-options" id="priceOptions">
+                <button type="button" data-price="50" onclick="selectPrice(50)">50 PHP</button>
+                <button type="button" data-price="100" onclick="selectPrice(100)">100 PHP</button>
+                <button type="button" data-price="150" onclick="selectPrice(150)">150 PHP</button>
+                <button type="button" data-price="200" onclick="selectPrice(200)">200 PHP</button>
+                <button type="button" data-price="250" onclick="selectPrice(250)">250 PHP</button>
+                <button type="button" data-price="300" onclick="selectPrice(300)">300 PHP</button>
+            </div>
+            <div class="pricing-actions"><span id="priceStatus">Choose a price to save it.</span></div>
+        </section>
+        <section class="ledger-card">
+            <h3>Weekly Reports</h3>
+            <table class="ledger-table"><thead><tr><th>Week</th><th>Total Revenue</th></tr></thead><tbody id="weeklyReports"></tbody></table>
+        </section>
+        <div style="text-align: right; margin-top: 22px;"><button class="btn-danger" onclick="resetRevenue()">Reset Vault (Clear All Data)</button></div>
     </main>
-
+    <div id="reportModal" class="report-modal" role="dialog" aria-modal="true" aria-labelledby="reportTitle">
+        <div class="report-modal-box">
+            <div class="report-modal-header"><h2 id="reportTitle">Weekly Report</h2><button class="report-close" type="button" onclick="closeReport()">&times;</button></div>
+            <table class="breakdown-table"><thead><tr><th>Date</th><th>Revenue</th><th>Sessions</th></tr></thead><tbody id="dailyBreakdown"></tbody></table>
+            <div class="modal-actions"><span id="weeklyTotal"></span><button type="button" onclick="exportWeeklyReport()">Export to Excel</button></div>
+        </div>
+    </div>
     <script src="../js/sidebar.js"></script>
     <script src="../js/loader.js"></script>
     <script>
         const socket = io('http://localhost:3001');
+        const priceValue = document.getElementById('priceValue');
+        let dailyRecords = [];
+        let selectedWeek = null;
 
-        socket.on('connect', () => {
-            socket.emit('request_sync');
-        });
-
-        socket.on('audit_update', (data) => {
+        socket.on('connect', () => socket.emit('request_sync'));
+        socket.on('audit_update', data => {
             document.getElementById('totalRevenue').innerHTML = `${data.revenue} <span class="stat-currency">PHP</span>`;
             document.getElementById('totalSessions').innerText = data.sessions;
-        });
-        
-        function resetRevenue() {
-            if(confirm("WARNING: This will permanently delete all revenue and session history. Are you sure?")) {
-                socket.emit('reset_revenue');
+            if (Array.isArray(data.dailyRecords)) {
+                dailyRecords = data.dailyRecords;
+                renderWeeklyReports();
             }
+            if (Number.isInteger(data.sessionPrice)) setPrice(data.sessionPrice);
+        });
+        socket.on('price_update', setPrice);
+        socket.on('price_error', message => { document.getElementById('priceStatus').innerText = message; });
+
+        function setPrice(price) {
+            priceValue.innerText = price;
+            document.querySelectorAll('#priceOptions button').forEach(button => {
+                button.classList.toggle('active', Number(button.dataset.price) === price);
+            });
+            document.getElementById('priceStatus').innerText = `Saved: ${price} PHP`;
         }
+
+        function selectPrice(price) {
+            document.getElementById('priceStatus').innerText = 'Saving...';
+            socket.emit('update_price', price);
+        }
+
+        function parseDate(value) {
+            const [day, month, year] = value.split('/').map(Number);
+            return new Date(year, month - 1, day);
+        }
+
+        function formatDate(date) {
+            return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+        }
+
+        function startOfWeek(date) {
+            const result = new Date(date);
+            const day = result.getDay();
+            result.setDate(result.getDate() - (day === 0 ? 6 : day - 1));
+            result.setHours(0, 0, 0, 0);
+            return result;
+        }
+
+        function renderWeeklyReports() {
+            const weeks = new Map();
+            dailyRecords.forEach(record => {
+                const start = startOfWeek(parseDate(record.date));
+                const key = start.getTime();
+                if (!weeks.has(key)) weeks.set(key, { start, days: [] });
+                weeks.get(key).days.push(record);
+            });
+            const body = document.getElementById('weeklyReports');
+            body.innerHTML = '';
+            Array.from(weeks.values()).sort((a, b) => b.start - a.start).forEach(week => {
+                const end = new Date(week.start);
+                end.setDate(end.getDate() + 6);
+                const revenue = week.days.reduce((sum, record) => sum + Number(record.revenue || 0), 0);
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${formatDate(week.start)} - ${formatDate(end)}</td><td>${revenue} PHP</td>`;
+                row.addEventListener('click', () => openReport(week, end));
+                body.appendChild(row);
+            });
+        }
+
+        function openReport(week, end) {
+            selectedWeek = { ...week, end };
+            const rows = document.getElementById('dailyBreakdown');
+            rows.innerHTML = '';
+            const days = Array.from({ length: 7 }, (_, index) => {
+                const date = new Date(week.start);
+                date.setDate(date.getDate() + index);
+                const record = week.days.find(item => item.date === formatDate(date)) || { date: formatDate(date), revenue: 0, sessions: 0 };
+                return record;
+            });
+            days.forEach(record => {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${record.date}</td><td>${record.revenue} PHP</td><td>${record.sessions}</td>`;
+                rows.appendChild(row);
+            });
+            const total = days.reduce((sum, record) => sum + Number(record.revenue || 0), 0);
+            document.getElementById('reportTitle').innerText = `${formatDate(week.start)} - ${formatDate(end)}`;
+            document.getElementById('weeklyTotal').innerText = `Total Revenue: ${total} PHP`;
+            document.getElementById('reportModal').style.display = 'flex';
+        }
+
+        function closeReport() { document.getElementById('reportModal').style.display = 'none'; }
+
+        function exportWeeklyReport() {
+            if (!selectedWeek) return;
+            const rows = [['', 'Flik Photobooth'], ['', `Total Revenue: ${formatDate(selectedWeek.start)} - ${formatDate(selectedWeek.end)}`], [''], ['', 'Date', 'Revenue', 'Sessions']];
+            const days = Array.from({ length: 7 }, (_, index) => {
+                const date = new Date(selectedWeek.start);
+                date.setDate(date.getDate() + index);
+                return selectedWeek.days.find(item => item.date === formatDate(date)) || { date: formatDate(date), revenue: 0, sessions: 0 };
+            });
+            days.forEach(record => rows.push(['', record.date, Number(record.revenue || 0), Number(record.sessions || 0)]));
+            const workbook = XLSX.utils.book_new();
+            const sheet = XLSX.utils.aoa_to_sheet(rows);
+            XLSX.utils.book_append_sheet(workbook, sheet, 'Weekly Report');
+            XLSX.writeFile(workbook, 'Flik_Photobooth_Weekly_Report.xlsx');
+        }
+
+        function resetRevenue() {
+            if (confirm('WARNING: This will permanently delete all revenue and session history. Are you sure?')) socket.emit('reset_revenue');
+        }
+
+        document.getElementById('reportModal').addEventListener('click', event => {
+            if (event.target.id === 'reportModal') closeReport();
+        });
     </script>
 </body>
 </html>

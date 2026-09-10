@@ -1,1 +1,9 @@
-{"totalRevenue":0,"totalSessions":0}
+{
+  "dailyRecords": [
+    {
+      "date": "10/09/2026",
+      "revenue": 300,
+      "sessions": 4
+    }
+  ]
+}

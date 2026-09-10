@@ -112,7 +112,7 @@
                 <div class="panel-box">
                     <h3> Live Status </h3>
                     <div class="compact-status">
-                        <div class="metric">Balance: <span class="metric-value" id="balanceDisplay">0 PHP</span></div>
+                        <div class="metric">Balance: <span class="metric-value" id="balanceDisplay">0 / 200 PHP</span></div>
                         <div class="metric">Filter: <span class="metric-value" id="filterDisplay">NORMAL</span></div>
                         <div class="metric">Status: <span class="metric-value" id="sessionDisplay">IDLE</span></div>
                         <div class="metric printer-status">Printer: <span class="metric-value" id="printerDisplay">None selected</span></div>
@@ -148,7 +148,8 @@
                         <button id="btnForceStart" class="btn-op btn-force">Force Start</button>
                         <button class="btn-op btn-reset" onclick="resetBalance()">Reset Balance</button>
                         <button id="btnAbort" class="btn-op btn-abort">Abort Session</button>
-                        <button id="btnRestart" class="btn-op btn-restart" style="grid-column: span 3;" onclick="triggerSystemRestart()">Restart System</button>
+                        <button id="btnRestart" class="btn-op btn-restart" style="grid-column: span 2;" onclick="triggerSystemRestart()">Restart System</button>
+                        <button id="btnFreePlay" class="btn-op" style="background: #991b1b;" onclick="toggleFreePlay()">Turn Off Bill Acceptor</button>
                     </div>
                 </div>
             </div>
@@ -181,6 +182,9 @@
         const printerModal = document.getElementById('printerSettingsModal');
         const printerDisplay = document.getElementById('printerDisplay');
         const dashboardFramePreview = document.getElementById('dashboardFramePreview');
+        const freePlayButton = document.getElementById('btnFreePlay');
+        let isFreePlayEnabled = false;
+        let sessionPrice = 200;
         let configuredPrinterName = '';
         let filterPresets = {
             NORMAL: { intensity: 100, grayscale: 0, sepia: 0, contrast: 100, brightness: 100, saturation: 100, hue: 0, invert: 0, blur: 0 },
@@ -248,6 +252,46 @@
         }
 
         socket.on('connect', () => { socket.emit('request_sync'); });
+
+        socket.on('audit_update', (data) => {
+            if (Number.isInteger(data.sessionPrice)) {
+                sessionPrice = data.sessionPrice;
+                const balanceText = document.getElementById('balanceDisplay').innerText.match(/^\d+/);
+                updateBalanceDisplay(balanceText ? balanceText[0] : 0);
+            }
+        });
+
+        socket.on('price_update', (price) => {
+            sessionPrice = price;
+            const balanceText = document.getElementById('balanceDisplay').innerText.match(/^\d+/);
+            updateBalanceDisplay(balanceText ? balanceText[0] : 0);
+        });
+
+        function updateBalanceDisplay(balance) {
+            document.getElementById('balanceDisplay').innerText = `${balance} / ${sessionPrice} PHP`;
+        }
+
+        socket.on('free_play_state', (enabled) => {
+            updateFreePlayButton(enabled);
+        });
+
+        function updateFreePlayButton(enabled) {
+            isFreePlayEnabled = enabled;
+            freePlayButton.style.background = enabled ? '#16a34a' : '#991b1b';
+            freePlayButton.innerText = enabled ? 'Free Play: ON' : 'Turn Off Bill Acceptor';
+        }
+
+        function toggleFreePlay() {
+            const enabling = !isFreePlayEnabled;
+            const message = enabling
+                ? 'Are you sure you want to turn OFF Bill Acceptance and enable Free Play mode? The arcade button will now start a session without bills.'
+                : 'Are you sure you want to revert to normal mode? Bills will be required to start a session.';
+
+            if (confirm(message)) {
+                updateFreePlayButton(enabling);
+                socket.emit('toggle_free_play', enabling);
+            }
+        }
 
         socket.on('printer_config', (config) => {
             const printerName = config.target || '';
@@ -375,7 +419,7 @@
         });
         socket.on('hardware_update', (data) => {
             if (data.type === 'balance') {
-                document.getElementById('balanceDisplay').innerText = `${data.value} PHP`;
+                updateBalanceDisplay(data.value);
             } else if (data.type === 'filter') {
                 applyFilterToPreview(data.value); 
             } else if (data.type === 'trigger' || data.type === 'status') {

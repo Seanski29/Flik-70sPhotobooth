@@ -36,17 +36,24 @@ function addLog(msg) {
     io.emit('terminal_log', msg);
 }
 
+function normalizeSessionPrice(value) {
+    const parsed = Number(value);
+    const allowedPrices = [50, 100, 150, 200, 250, 300];
+    return allowedPrices.includes(parsed) ? parsed : 200;
+}
+
 // --- PERSISTENT DATABASE SYSTEM ---
 const statsFilePath = path.join(__dirname, 'stats.json');
 const configFilePath = path.join(__dirname, 'config.json');
 let totalRevenue = 0;
 let totalSessions = 0;
+let dailyRecords = [];
 const DEFAULT_FILTERS = {
     NORMAL: { name: 'Normal', intensity: 100, grayscale: 0, sepia: 0, contrast: 100, brightness: 100, saturation: 100, hue: 0, invert: 0, blur: 0 },
     NOIR: { name: 'Noir', intensity: 100, grayscale: 100, sepia: 0, contrast: 140, brightness: 95, saturation: 100, hue: 0, invert: 0, blur: 0 },
     FILM_II: { name: 'Film II', intensity: 100, grayscale: 0, sepia: 20, contrast: 110, brightness: 100, saturation: 180, hue: -5, invert: 0, blur: 0 }
 };
-let appConfig = { targetPrinter: '', printerName: '', activeFrame: '', filters: DEFAULT_FILTERS };
+let appConfig = { targetPrinter: '', printerName: '', activeFrame: '', filters: DEFAULT_FILTERS, sessionPrice: 200 };
 
 function normalizeFilter(filter, fallback) {
     const source = filter && typeof filter === 'object' ? filter : {};
@@ -82,12 +89,13 @@ function loadConfig() {
             appConfig.targetPrinter = appConfig.targetPrinter || appConfig.printerName || '';
             appConfig.printerName = appConfig.targetPrinter;
             appConfig.filters = normalizeFilters(appConfig.filters);
+            appConfig.sessionPrice = normalizeSessionPrice(appConfig.sessionPrice);
         } else {
             saveConfig();
         }
     } catch (err) {
         console.error('Failed to read config.json:', err);
-        appConfig = { targetPrinter: '', printerName: '', activeFrame: '', filters: normalizeFilters() };
+        appConfig = { targetPrinter: '', printerName: '', activeFrame: '', filters: normalizeFilters(), sessionPrice: 200 };
     }
 }
 
@@ -105,8 +113,22 @@ function loadStats() {
     try {
         if (fs.existsSync(statsFilePath)) {
             const data = JSON.parse(fs.readFileSync(statsFilePath, 'utf8'));
-            totalRevenue = data.totalRevenue || 0;
-            totalSessions = data.totalSessions || 0;
+            if (Array.isArray(data.dailyRecords)) {
+                dailyRecords = data.dailyRecords
+                    .filter(record => record && typeof record.date === 'string')
+                    .map(record => ({
+                        date: record.date,
+                        revenue: Number(record.revenue) || 0,
+                        sessions: Number(record.sessions) || 0
+                    }));
+            } else if (Number(data.totalRevenue) || Number(data.totalSessions)) {
+                dailyRecords = [{
+                    date: formatDate(new Date()),
+                    revenue: Number(data.totalRevenue) || 0,
+                    sessions: Number(data.totalSessions) || 0
+                }];
+            }
+            refreshTotals();
             addLog(`>  Loaded historical data: ${totalRevenue} PHP / ${totalSessions} Sessions`);
         }
     } catch (err) {
@@ -115,7 +137,7 @@ function loadStats() {
 }
 function saveStats() {
     try {
-        fs.writeFileSync(statsFilePath, JSON.stringify({ totalRevenue, totalSessions }));
+        fs.writeFileSync(statsFilePath, JSON.stringify({ dailyRecords }, null, 2));
     } catch (err) {
         console.error("Failed to save stats:", err);
     }
@@ -128,11 +150,10 @@ let activeFilter = 'NORMAL';
 let lockedSessionFilter = 'NORMAL'; 
 let lockedSessionFilterConfig = normalizeFilter(DEFAULT_FILTERS.NORMAL, DEFAULT_FILTERS.NORMAL);
 let sessionInProgress = false;
+let isFreePlayMode = false;
 
 let arduinoConnected = false; 
 let isConnecting = false; 
-const SESSION_COST = 200; 
-
 let arduinoTotal = 0; 
 let availableBalance = 0; 
 
@@ -145,6 +166,40 @@ let normalDebounce;
 let port; 
 let parser;
 let printJobActive = false;
+
+function formatDate(date) {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    return `${day}/${month}/${date.getFullYear()}`;
+}
+
+function refreshTotals() {
+    totalRevenue = dailyRecords.reduce((sum, record) => sum + record.revenue, 0);
+    totalSessions = dailyRecords.reduce((sum, record) => sum + record.sessions, 0);
+}
+
+function recordCompletedSession() {
+    const date = formatDate(new Date());
+    let record = dailyRecords.find(item => item.date === date);
+    if (!record) {
+        record = { date, revenue: 0, sessions: 0 };
+        dailyRecords.push(record);
+    }
+    record.revenue += appConfig.sessionPrice;
+    record.sessions += 1;
+    refreshTotals();
+    saveStats();
+    emitAuditUpdate();
+}
+
+function emitAuditUpdate() {
+    io.emit('audit_update', {
+        revenue: totalRevenue,
+        sessions: totalSessions,
+        dailyRecords,
+        sessionPrice: appConfig.sessionPrice
+    });
+}
 
 // --- HARDWARE HELPER FUNCTIONS ---
 
@@ -166,13 +221,20 @@ function listInstalledPrinters() {
                 resolve([]);
             }
         });
+
     });
 }
 
 function evaluateLEDState() {
     if (sessionInProgress) return; 
+
+    if (isFreePlayMode) {
+        if (port && arduinoConnected) port.write("READY_TO_START\n");
+        io.emit('bg_music_command', 'STOP');
+        return;
+    }
     
-    if (availableBalance >= SESSION_COST) {
+    if (availableBalance >= appConfig.sessionPrice) {
         if (port && arduinoConnected) port.write("READY_TO_START\n");
         io.emit('bg_music_command', 'PLAY');
     } else {
@@ -195,17 +257,46 @@ function printCollage(imagePath) {
     printJobActive = true;
     const finishPrintJob = () => { printJobActive = false; };
 
-    const paintPath = path.join(process.env.WINDIR || 'C:\\Windows', 'System32', 'mspaint.exe');
-    if (!fs.existsSync(paintPath)) {
-        finishPrintJob();
-        addLog('ERROR: mspaint.exe is unavailable; print job was not submitted.');
-        return;
-    }
+    const printCommand = `
+$ErrorActionPreference = 'Stop'
+Add-Type -AssemblyName System.Drawing
+$image = [System.Drawing.Image]::FromFile($env:FLIK_PRINT_IMAGE)
+$document = New-Object System.Drawing.Printing.PrintDocument
+$document.PrinterSettings.PrinterName = $env:FLIK_PRINT_PRINTER
+if (-not $document.PrinterSettings.IsValid) {
+    throw "Configured printer [$env:FLIK_PRINT_PRINTER] is not available."
+}
+$document.add_PrintPage({
+    param($sender, $event)
+    $page = $event.PageBounds
+    $scale = [Math]::Min($page.Width / $image.Width, $page.Height / $image.Height)
+    $width = [int]($image.Width * $scale)
+    $height = [int]($image.Height * $scale)
+    $x = [int](($page.Width - $width) / 2)
+    $y = [int](($page.Height - $height) / 2)
+    $event.Graphics.DrawImage($image, $x, $y, $width, $height)
+})
+$document.Print()
+$image.Dispose()
+$document.Dispose()
+`;
 
-    execFile(paintPath, ['/pt', imagePath, appConfig.targetPrinter], {
+    execFile('powershell.exe', [
+        '-NoProfile',
+        '-NonInteractive',
+        '-STA',
+        '-ExecutionPolicy',
+        'Bypass',
+        '-Command',
+        printCommand
+    ], {
         windowsHide: true,
-        timeout: 15000,
-        killSignal: 'SIGKILL'
+        timeout: 30000,
+        env: {
+            ...process.env,
+            FLIK_PRINT_IMAGE: imagePath,
+            FLIK_PRINT_PRINTER: appConfig.targetPrinter
+        }
     }, (error, stdout, stderr) => {
         finishPrintJob();
         if (error) {
@@ -213,7 +304,7 @@ function printCollage(imagePath) {
             addLog(`ERROR: Failed to print on [${appConfig.targetPrinter}]. ${reason}`);
             return;
         }
-        addLog(`> 🖨️ Print job sent silently to [${appConfig.targetPrinter}] using the configured 4x6 driver profile.`);
+        addLog(`> 🖨️ Print job sent to [${appConfig.targetPrinter}] using the configured Windows printer.`);
     });
 }
 
@@ -258,6 +349,7 @@ function capturePhoto() {
                 try {
                     await createCollage(currentSessionPhotos, collagePath, lockedSessionFilterConfig);
                     const imageUrl = `http://localhost:3001/archive/${collageName}`;
+                    recordCompletedSession();
                     
                     io.emit('collage_ready', imageUrl);
                     addLog(`SUCCESS: Collage generated and sent to frontend.`);
@@ -286,7 +378,7 @@ function capturePhoto() {
 }
 
 async function startSessionLoop(isFreePlay = false) {
-    if (sessionInProgress) {
+    if (sessionInProgress || printJobActive) {
         addLog(">  Session already processing. Ignoring duplicate command.");
         return; 
     }
@@ -312,18 +404,14 @@ async function startSessionLoop(isFreePlay = false) {
     addLog(`>  Diagnostics passed. System Secured. Filter locked to: ${lockedSessionFilter}`);
     
     if (!isFreePlay) {
-        availableBalance -= SESSION_COST;
+    availableBalance -= appConfig.sessionPrice;
         io.emit('hardware_update', { type: 'balance', value: availableBalance });
-        addLog(`>  Payment Accepted: ${SESSION_COST} PHP deducted. Remaining Balance: ${availableBalance} PHP.`);
+    addLog(`>  Payment Accepted: ${appConfig.sessionPrice} PHP deducted. Remaining Balance: ${availableBalance} PHP.`);
     } else {
         addLog(`>  Free Play Enabled: No balance deducted.`);
     }
     
     currentSessionPhotos = [];
-    totalSessions++;
-    saveStats();
-    
-    io.emit('audit_update', { revenue: totalRevenue, sessions: totalSessions });
     io.emit('hardware_update', { type: 'trigger', value: 'START' });
     
     if (port && arduinoConnected) port.write("SESSION_START\n");
@@ -432,30 +520,35 @@ async function connectToHardware() {
                 }
             } else if (cleanData.includes('TRIGGER: START') || cleanData.includes('BUTTON_CLICKED')) {
                 addLog(`> DEBUG: Button Trigger Received.`);
-                if (availableBalance >= SESSION_COST) {
+                if (sessionInProgress || printJobActive) {
+                    addLog(`>  Session already processing or printing. Ignoring duplicate button press.`);
+                } else if (isFreePlayMode) {
+                    startSessionLoop(true);
+                } else if (availableBalance >= appConfig.sessionPrice) {
                     startSessionLoop(false); 
                 } else {
-                    addLog(`ERROR: ❌ INSUFFICIENT FUNDS. Balance: ${availableBalance} PHP (Requires ${SESSION_COST} PHP).`);
+                    addLog(`ERROR: ❌ INSUFFICIENT FUNDS. Balance: ${availableBalance} PHP (Requires ${appConfig.sessionPrice} PHP).`);
                 }
             } else if (cleanData.includes('BALANCE:')) {
                 const currentArduinoVal = parseInt(cleanData.split(':')[1]);
-                
+                if (!Number.isFinite(currentArduinoVal)) return;
+                if (isFreePlayMode) {
+                    arduinoTotal = currentArduinoVal;
+                    return;
+                }
+
                 if (currentArduinoVal < arduinoTotal) arduinoTotal = 0;
 
                 if (currentArduinoVal > arduinoTotal) {
                     const newlyInserted = currentArduinoVal - arduinoTotal;
                     availableBalance += newlyInserted;
-                    totalRevenue += newlyInserted;
-                    saveStats();
                     arduinoTotal = currentArduinoVal;
                     
-                    io.emit('audit_update', { revenue: totalRevenue, sessions: totalSessions });
                     io.emit('pulse_received'); 
                     io.emit('hardware_update', { type: 'balance', value: availableBalance });
                     addLog(`>  Bill Detected: Added ${newlyInserted} PHP.`);
-                    
-                    evaluateLEDState(); 
                 }
+                evaluateLEDState();
             }
         });
     } catch (err) {
@@ -469,7 +562,12 @@ setInterval(() => {
 
 io.on('connection', (socket) => {
     socket.on('request_sync', () => {
-        socket.emit('audit_update', { revenue: totalRevenue, sessions: totalSessions });
+        socket.emit('audit_update', {
+            revenue: totalRevenue,
+            sessions: totalSessions,
+            dailyRecords,
+            sessionPrice: appConfig.sessionPrice
+        });
         socket.emit('hardware_update', { type: 'balance', value: availableBalance }); 
         socket.emit('hardware_update', { type: 'filter', value: `FILTER: ${activeFilter}` }); 
         socket.emit('terminal_history', terminalHistory);
@@ -477,8 +575,45 @@ io.on('connection', (socket) => {
         socket.emit('printer_config', { target: appConfig.printerName });
         socket.emit('frame_config', { active: appConfig.activeFrame });
         socket.emit('filter_config', appConfig.filters);
+        socket.emit('free_play_state', isFreePlayMode);
+        socket.emit(
+            'bg_music_command',
+            !isFreePlayMode && availableBalance >= appConfig.sessionPrice ? 'PLAY' : 'STOP'
+        );
         socket.emit('frame_list', listFrames());
         listInstalledPrinters().then(printers => socket.emit('printer_list', printers));
+    });
+
+    socket.on('toggle_free_play', (enabled) => {
+        if (typeof enabled !== 'boolean') {
+            socket.emit('free_play_error', 'Invalid Free Play mode value.');
+            return;
+        }
+
+        isFreePlayMode = enabled;
+        if (isFreePlayMode) {
+            if (port && arduinoConnected) port.write("READY_TO_START\n");
+            io.emit('bg_music_command', 'STOP');
+            addLog('> Free Play mode enabled. Bill acceptance is ignored.');
+        } else {
+            evaluateLEDState();
+            addLog('> Free Play mode disabled. Bill acceptance restored.');
+        }
+        io.emit('free_play_state', isFreePlayMode);
+    });
+
+    socket.on('update_price', (value) => {
+        const nextPrice = normalizeSessionPrice(value);
+        if (Number(value) !== nextPrice) {
+            socket.emit('price_error', 'Select a valid session price.');
+            return;
+        }
+        appConfig.sessionPrice = nextPrice;
+        saveConfig();
+        emitAuditUpdate();
+        io.emit('price_update', nextPrice);
+        evaluateLEDState();
+        addLog(`> Session price updated to ${nextPrice} PHP.`);
     });
 
     socket.on('request_printers', async () => {
@@ -632,10 +767,10 @@ io.on('connection', (socket) => {
     });
     
     socket.on('reset_revenue', () => {
-        totalRevenue = 0;
-        totalSessions = 0;
+        dailyRecords = [];
+        refreshTotals();
         saveStats();
-        io.emit('audit_update', { revenue: totalRevenue, sessions: totalSessions });
+        emitAuditUpdate();
         addLog(">  Vault stats permanently reset by operator.");
     });
     

@@ -11,17 +11,21 @@
       "contrast": 100,
       "brightness": 100,
       "saturation": 100,
-      "hue": 0
+      "hue": 0,
+      "invert": 0,
+      "blur": 0
     },
     "NOIR": {
       "name": "Noir",
-      "intensity": 15,
+      "intensity": 100,
       "grayscale": 100,
       "sepia": 0,
       "contrast": 140,
       "brightness": 95,
       "saturation": 100,
-      "hue": 0
+      "hue": 0,
+      "invert": 0,
+      "blur": 0
     },
     "FILM_II": {
       "name": "Film II",
@@ -31,7 +35,10 @@
       "contrast": 110,
       "brightness": 100,
       "saturation": 180,
-      "hue": -5
+      "hue": -5,
+      "invert": 0,
+      "blur": 0
     }
-  }
+  },
+  "sessionPrice": 50
 }
