@@ -26,13 +26,21 @@ const dataRoot = process.env.FLIK_DATA_DIR
     ? path.resolve(process.env.FLIK_DATA_DIR)
     : path.join(__dirname, '..');
 const masterFolder = path.join(dataRoot, 'archive');
-const framesFolder = process.env.FLIK_DATA_DIR
-    ? path.join(dataRoot, 'frames')
-    : bundledFramesFolder;
+const legacyArchiveFolders = [
+    path.join(dataRoot, 'src', 'archive'),
+    path.join(dataRoot, 'assets', 'archive')
+];
+const dataFramesFolder = path.join(dataRoot, 'frames');
+const legacyFramesFolder = path.join(dataRoot, 'assets', 'frames');
+const framesFolder = process.env.FLIK_DATA_DIR && fs.existsSync(legacyFramesFolder)
+    ? legacyFramesFolder
+    : dataFramesFolder;
 const persistentConfigFolder = process.env.FLIK_DATA_DIR ? dataRoot : __dirname;
 app.use('/archive', express.static(masterFolder)); 
+legacyArchiveFolders.forEach(folder => app.use('/archive', express.static(folder)));
 app.use('/archive', express.static(bundledArchiveFolder));
 app.use('/frames', express.static(framesFolder));
+app.use('/frames', express.static(legacyFramesFolder));
 app.use('/frames', express.static(bundledFramesFolder));
 
 if (!fs.existsSync(masterFolder)) fs.mkdirSync(masterFolder, { recursive: true });
@@ -767,8 +775,8 @@ io.on('connection', (socket) => {
 
     socket.on('print_photo', (filename) => {
         if (typeof filename !== 'string' || !/^collage_[^\\/]+\.jpg$/i.test(filename)) return;
-        const imagePath = path.join(masterFolder, filename);
-        if (fs.existsSync(imagePath)) printCollage(imagePath);
+        const imagePath = resolveArchivePath(filename);
+        if (imagePath) printCollage(imagePath);
     });
 
     socket.on('upload_archive_photo', async (payload) => {
@@ -887,7 +895,7 @@ app.get('/api/gallery', (req, res) => {
 app.delete('/api/gallery/:filename', (req, res) => {
     const filename = req.params.filename;
     if (!filename.startsWith('collage_') || !filename.endsWith('.jpg')) return res.status(403).json({ error: "Invalid file type" });
-    const filePath = path.join(masterFolder, filename);
+    const filePath = resolveArchivePath(filename);
     try {
         if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath); 
@@ -1023,7 +1031,7 @@ async function createCollage(photos, outputPath, filterConfig) {
 
 function listFrames() {
     const names = new Set();
-    [framesFolder, bundledFramesFolder].forEach(folder => {
+    [framesFolder, legacyFramesFolder, bundledFramesFolder].forEach(folder => {
         if (!fs.existsSync(folder)) return;
         fs.readdirSync(folder)
             .filter(name => /\.(jpe?g|png|webp)$/i.test(name))
@@ -1035,15 +1043,16 @@ function listFrames() {
 
 function resolveFramePath(filename) {
     if (typeof filename !== 'string' || filename !== path.basename(filename)) return '';
-    const writablePath = path.join(framesFolder, filename);
-    if (fs.existsSync(writablePath)) return writablePath;
-    const bundledPath = path.join(bundledFramesFolder, filename);
-    return fs.existsSync(bundledPath) ? bundledPath : '';
+    for (const folder of [framesFolder, legacyFramesFolder, bundledFramesFolder]) {
+        const candidate = path.join(folder, filename);
+        if (fs.existsSync(candidate)) return candidate;
+    }
+    return '';
 }
 
 function listArchiveFiles() {
     const files = new Map();
-    [masterFolder, bundledArchiveFolder].forEach(folder => {
+    [masterFolder, ...legacyArchiveFolders, bundledArchiveFolder].forEach(folder => {
         if (!fs.existsSync(folder)) return;
         fs.readdirSync(folder)
             .filter(name => /^collage_.*\.jpg$/i.test(name))
@@ -1058,10 +1067,11 @@ function listArchiveFiles() {
 
 function resolveArchivePath(filename) {
     if (typeof filename !== 'string' || filename !== path.basename(filename)) return '';
-    const writablePath = path.join(masterFolder, filename);
-    if (fs.existsSync(writablePath)) return writablePath;
-    const bundledPath = path.join(bundledArchiveFolder, filename);
-    return fs.existsSync(bundledPath) ? bundledPath : '';
+    for (const folder of [masterFolder, ...legacyArchiveFolders, bundledArchiveFolder]) {
+        const candidate = path.join(folder, filename);
+        if (fs.existsSync(candidate)) return candidate;
+    }
+    return '';
 }
 
 server.listen(PORT, () => console.log(` FLIK Master Backend running on port ${PORT}`));

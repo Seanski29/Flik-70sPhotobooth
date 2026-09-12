@@ -16,8 +16,18 @@ ipcMain.handle('toggle-fullscreen', (event) => {
 function createWindow() {
     // 1. Start your backend server silently in the background
     // Pointing to your specific path: src/js/server.js
+    const boothDataFolder = path.join(app.getPath('home'), 'Fik-70sPhotobooth');
     const serverEnv = app.isPackaged
-        ? { ...process.env, FLIK_DATA_DIR: path.join(app.getPath('userData'), 'data') }
+        ? {
+            ...process.env,
+            // Keep booth media beside the booth installation when it exists.
+            // This also makes the same installation portable between PCs.
+            FLIK_DATA_DIR: process.env.FLIK_DATA_DIR || (
+                require('fs').existsSync(boothDataFolder)
+                    ? boothDataFolder
+                    : path.join(app.getPath('userData'), 'data')
+            )
+        }
         : process.env;
     serverProcess = fork(path.join(__dirname, 'src', 'js', 'server.js'), [], { env: serverEnv });
 

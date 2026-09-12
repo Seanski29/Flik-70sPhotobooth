@@ -225,7 +225,7 @@
                 <!-- ROW 1: Visuals -->
                 <div class="visual-row">
                     <div class="preview-card">
-                        <img id="webcam-preview" class="filter-NORMAL" src="http://localhost:5513/liveview.jpg">
+                        <img id="webcam-preview" class="filter-NORMAL" src="http://127.0.0.1:5514/live" alt="Live camera preview">
                     </div>
                     <div class="active-frame-card">
                         <h3>Active Frame</h3>
@@ -518,32 +518,9 @@
             dashboardFramePreview.src = active ? `http://localhost:3001/frames/${encodeURIComponent(active)}` : '';
         });
 
-        let liveViewRequestInFlight = false;
-        let liveViewObjectUrl = '';
-        let nextLiveViewRequestAt = 0;
-        async function updateLiveView() {
-            const now = performance.now();
-            if (!liveViewRequestInFlight && now >= nextLiveViewRequestAt && !document.hidden) {
-                liveViewRequestInFlight = true;
-                nextLiveViewRequestAt = now + 250;
-                try {
-                    const response = await fetch(`http://127.0.0.1:5513/liveview.jpg?t=${Date.now()}`, { cache: 'no-store' });
-                    const contentType = response.headers.get('content-type') || '';
-                    if (response.ok && contentType.includes('image/')) {
-                        const nextObjectUrl = URL.createObjectURL(await response.blob());
-                        liveView.src = nextObjectUrl;
-                        if (liveViewObjectUrl) URL.revokeObjectURL(liveViewObjectUrl);
-                        liveViewObjectUrl = nextObjectUrl;
-                    }
-                } catch (error) {
-                    // DigiCamControl may be offline while the dashboard remains open.
-                } finally {
-                    liveViewRequestInFlight = false;
-                }
-            }
-            requestAnimationFrame(updateLiveView);
-        }
-        requestAnimationFrame(updateLiveView);
+        // digiCamControl exposes a continuous MJPEG stream on 5514/live.
+        // Using the stream avoids showing the last still image returned by liveview.jpg.
+        liveView.src = 'http://127.0.0.1:5514/live';
 
         // TERMINAL LOGIC
         socket.on('terminal_history', (historyArray) => {
