@@ -517,6 +517,7 @@ async function connectToHardware() {
         );
 
         if (!targetPort) {
+            addLog('> Arduino not found. Retrying serial scan...');
             isConnecting = false;
             return; 
         }
@@ -524,7 +525,9 @@ async function connectToHardware() {
         port = new SerialPort({ path: targetPort.path, baudRate: 115200, autoOpen: false });
         parser = port.pipe(new ReadlineParser({ delimiter: '\r\n' }));
 
+        const currentPort = port;
         const handleDisconnect = (message) => {
+            if (port !== currentPort) return;
             if (arduinoConnected) addLog(`ERROR: Arduino connection lost!`);
             arduinoConnected = false;
             isConnecting = false;
@@ -533,7 +536,10 @@ async function connectToHardware() {
             parser = undefined;
         };
 
-        port.on('error', () => handleDisconnect('Arduino will be rediscovered automatically.'));
+        port.on('error', (error) => {
+            addLog(`ERROR: Arduino serial error on ${targetPort.path}: ${error.message}`);
+            handleDisconnect('Arduino will be rediscovered automatically.');
+        });
 
         port.on('close', () => {
             handleDisconnect('Arduino unplugged. Waiting for reconnection.');
@@ -621,6 +627,7 @@ async function connectToHardware() {
         });
     } catch (err) {
         isConnecting = false;
+        addLog(`ERROR: Unable to scan serial ports: ${err.message}`);
     }
 }
 
@@ -1107,4 +1114,7 @@ app.get('/api/archive', (req, res) => {
     }
 });
 
-server.listen(PORT, () => console.log(` FLIK Master Backend running on port ${PORT}`));
+server.listen(PORT, '127.0.0.1', () => {
+    console.log(` FLIK Master Backend running on port ${PORT}`);
+    if (process.send) process.send({ type: 'server-ready' });
+});

@@ -30,6 +30,30 @@ function createWindow() {
         }
         : process.env;
     serverProcess = fork(path.join(__dirname, 'src', 'js', 'server.js'), [], { env: serverEnv });
+    let loginLoaded = false;
+
+    const loadLoginPage = () => {
+        if (loginLoaded || !mainWindow || mainWindow.isDestroyed()) return;
+        loginLoaded = true;
+        mainWindow.loadFile(path.join(__dirname, 'src', 'html', 'login.html'));
+    };
+
+    serverProcess.on('message', (message) => {
+        if (message && message.type === 'server-ready') loadLoginPage();
+    });
+
+    serverProcess.on('error', (error) => {
+        console.error('FLIK backend failed to start:', error);
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            dialog.showErrorBox('FLIK Backend Error', `The local backend could not start.\n\n${error.message}`);
+        }
+    });
+
+    serverProcess.on('exit', (code) => {
+        if (!isQuitting && code !== 0 && mainWindow && !mainWindow.isDestroyed()) {
+            dialog.showErrorBox('FLIK Backend Stopped', 'The local backend stopped unexpectedly. Please restart FLIK.');
+        }
+    });
 
     // 2. Create the Desktop Window
     mainWindow = new BrowserWindow({
@@ -66,11 +90,8 @@ function createWindow() {
         });
     });
 
-    // 3. Load the Login Page FIRST
-    // Pointing to your specific path: src/html/login.html
-    setTimeout(() => {
-        mainWindow.loadFile(path.join(__dirname, 'src', 'html', 'login.html'));
-    }, 1500); // 1.5-second delay ensures the server is fully running before the UI loads
+    // Load the UI after the backend confirms that its HTTP server is ready.
+    setTimeout(loadLoginPage, 5000);
 
     mainWindow.on('closed', () => {
         mainWindow = null;
@@ -83,31 +104,13 @@ app.whenReady().then(createWindow);
 // Kill the Node background process cleanly when closing the app
 // --- BULLETPROOF SHUTDOWN SEQUENCE ---
 
-// 1. When all windows are closed, quit the app completely
-app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-        app.quit();
-    }
-});
-
-// 2. Right before the app quits, assassinate the background server
+// Right before the app quits, stop the background server.
 app.on('will-quit', () => {
     if (serverProcess) {
-        // Standard polite kill
-        serverProcess.kill('SIGINT'); 
-        
-        // Aggressive Windows force-kill (The programmatic version of what you just did in the terminal)
+        serverProcess.kill('SIGINT');
         const { exec } = require('child_process');
         if (process.platform === 'win32') {
-            exec(`taskkill /F /PID ${serverProcess.pid}`, (err) => {
-                // We don't care about errors here, we just want it dead.
-            });
+            exec(`taskkill /F /PID ${serverProcess.pid}`, () => {});
         }
-    }
-});
-
-app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-        app.quit();
     }
 });
