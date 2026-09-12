@@ -79,13 +79,13 @@
         }
 
         .visual-row { 
-            flex: 0 0 180px; 
-            display: flex;
+            flex: 0 0 210px;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 10px; 
         }
 
         .preview-card { 
-            flex: 1.5;
             background: rgba(0,0,0,0.72); 
             border: 1px solid #444; 
             border-radius: 8px; 
@@ -102,7 +102,6 @@
         }
 
         .active-frame-card { 
-            flex: 1;
             display: flex; 
             flex-direction: column; 
             align-items: center; 
@@ -128,9 +127,10 @@
         .operator-panel {
             flex: 1 1 0;
             min-height: 0;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            align-content: start;
+            gap: 10px;
             overflow-y: auto;
             overflow-x: hidden;
             scrollbar-width: thin;
@@ -150,6 +150,10 @@
             border-radius: 4px;
         }
 
+        .operator-panel > div:last-child {
+            grid-column: 1 / -1;
+        }
+
         .compact-status { 
             display: grid; 
             grid-template-columns: 1fr 1fr; 
@@ -164,7 +168,7 @@
         h3 { margin: 0 0 8px 0; font-size: 14px; color: #e5e7eb; border-bottom: 1px solid #333; padding-bottom: 4px; }
         
         .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-        .btn-test, .btn-op { padding: 10px 5px; font-size: 12px; font-weight: bold; border: none; border-radius: 4px; color: white; cursor: pointer; transition: 0.2s ease; text-align: center; }
+        .btn-test, .btn-op { padding: 8px 5px; font-size: 12px; font-weight: bold; border: none; border-radius: 4px; color: white; cursor: pointer; transition: 0.2s ease; text-align: center; }
         .btn-op:hover { filter: brightness(1.2); }
 
         /* BA Off / Free Play Button Specifics */
@@ -181,6 +185,12 @@
         .printer-settings-actions button { padding: 10px 20px; border: 0; border-radius: 5px; color: #fff; cursor: pointer; font-weight: bold; }
         .printer-settings-actions .cancel { background: #555; }
         .printer-settings-actions .save { background: #2563eb; }
+
+        @media (max-width: 1150px) {
+            .right-column { min-width: 390px; }
+            .operator-panel { grid-template-columns: 1fr; }
+            .operator-panel > div:last-child { grid-column: auto; }
+        }
 
         /* Slider */
         input[type=range] { appearance: none; -webkit-appearance: none; width: 100%; background: transparent; margin-top: 5px; }
@@ -518,9 +528,36 @@
             dashboardFramePreview.src = active ? `http://localhost:3001/frames/${encodeURIComponent(active)}` : '';
         });
 
-        // digiCamControl exposes a continuous MJPEG stream on 5514/live.
-        // Using the stream avoids showing the last still image returned by liveview.jpg.
-        liveView.src = 'http://127.0.0.1:5514/live';
+        // Use the smooth MJPEG stream whenever Electron can render it. Keep
+        // the still endpoint as a fallback for machines where MJPEG is blocked.
+        const liveStreamUrl = 'http://127.0.0.1:5514/live';
+        const liveStillUrl = 'http://127.0.0.1:5513/liveview.jpg';
+        let liveViewRefresh;
+        let streamRetry;
+
+        const clearPreviewTimers = () => {
+            clearInterval(liveViewRefresh);
+            clearInterval(streamRetry);
+        };
+
+        const refreshLiveStill = () => {
+            liveView.src = `${liveStillUrl}?t=${Date.now()}`;
+        };
+
+        const useStillFallback = () => {
+            clearPreviewTimers();
+            refreshLiveStill();
+            liveViewRefresh = setInterval(refreshLiveStill, 750);
+            streamRetry = setInterval(startLiveStream, 10000);
+        };
+
+        function startLiveStream() {
+            clearPreviewTimers();
+            liveView.src = `${liveStreamUrl}?t=${Date.now()}`;
+        }
+
+        liveView.addEventListener('error', useStillFallback);
+        startLiveStream();
 
         // TERMINAL LOGIC
         socket.on('terminal_history', (historyArray) => {
