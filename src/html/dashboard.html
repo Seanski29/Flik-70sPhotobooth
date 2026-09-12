@@ -8,11 +8,24 @@
     <script src="http://localhost:3001/socket.io/socket.io.js"></script>
     <style>
         /* --- KIOSK STRICT NO-SCROLL LAYOUT --- */
-        body.app-layout, .workspace { 
-            height: 100vh; 
+        body.app-layout {
+            height: 100vh;
             width: 100vw;
             overflow: hidden; 
             margin: 0; 
+        }
+
+        #sidebar-container {
+            flex-shrink: 0;
+        }
+
+        .workspace {
+            height: 100vh;
+            width: auto;
+            min-width: 0;
+            min-height: 0;
+            flex: 1 1 auto;
+            overflow: hidden;
             display: flex;
             flex-direction: column;
         }
@@ -32,6 +45,7 @@
             padding: 0 20px 20px 20px;
             overflow: hidden; 
             min-height: 0; 
+            min-width: 0;
         }
 
         /* LEFT COLUMN (Terminal - ONLY SCROLLABLE AREA) */
@@ -53,14 +67,14 @@
             font-size: 13px;
         }
 
-        /* RIGHT COLUMN (Controls - STRICTLY NON-SCROLLABLE) */
+        /* RIGHT COLUMN: preview/status stay fixed; operator controls can scroll */
         .right-column { 
             flex: 0.85;
             min-width: 430px;
+            min-height: 0;
             display: flex;
             flex-direction: column;
             gap: 10px;
-            min-height: 0;
             overflow: hidden; 
         }
 
@@ -112,10 +126,28 @@
         }
         
         .operator-panel {
-            flex: 1 1 auto; /* Fills remaining space */
+            flex: 1 1 0;
+            min-height: 0;
             display: flex;
             flex-direction: column;
-            justify-content: space-between; /* Spaces UI out perfectly */
+            justify-content: flex-start;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scrollbar-width: thin;
+            scrollbar-color: #555 #1a1a1a;
+        }
+
+        .operator-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .operator-panel::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+
+        .operator-panel::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 4px;
         }
 
         .compact-status { 
@@ -488,9 +520,12 @@
 
         let liveViewRequestInFlight = false;
         let liveViewObjectUrl = '';
+        let nextLiveViewRequestAt = 0;
         async function updateLiveView() {
-            if (!liveViewRequestInFlight) {
+            const now = performance.now();
+            if (!liveViewRequestInFlight && now >= nextLiveViewRequestAt && !document.hidden) {
                 liveViewRequestInFlight = true;
+                nextLiveViewRequestAt = now + 250;
                 try {
                     const response = await fetch(`http://127.0.0.1:5513/liveview.jpg?t=${Date.now()}`, { cache: 'no-store' });
                     const contentType = response.headers.get('content-type') || '';

@@ -16,7 +16,10 @@ ipcMain.handle('toggle-fullscreen', (event) => {
 function createWindow() {
     // 1. Start your backend server silently in the background
     // Pointing to your specific path: src/js/server.js
-    serverProcess = fork(path.join(__dirname, 'src', 'js', 'server.js'));
+    const serverEnv = app.isPackaged
+        ? { ...process.env, FLIK_DATA_DIR: path.join(app.getPath('userData'), 'data') }
+        : process.env;
+    serverProcess = fork(path.join(__dirname, 'src', 'js', 'server.js'), [], { env: serverEnv });
 
     // 2. Create the Desktop Window
     mainWindow = new BrowserWindow({
