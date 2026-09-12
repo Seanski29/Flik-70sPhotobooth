@@ -12,12 +12,12 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: { origin: "*", methods: ["GET", "POST"] },
-    maxHttpBufferSize: 20 * 1024 * 1024
+    maxHttpBufferSize: 100 * 1024 * 1024
 });
 
 const PORT = 3001;
 app.use(cors());
-app.use(express.json({ limit: '20mb' }));
+app.use(express.json({ limit: '50mb' }));
 
 const projectRoot = path.join(__dirname, '..', '..');
 const bundledArchiveFolder = path.join(__dirname, '..', 'archive');
@@ -723,7 +723,7 @@ io.on('connection', (socket) => {
                 throw new Error('Only JPG, PNG, and WebP frames are supported.');
             }
             const safeBaseName = path.basename(payload.name).replace(/[^a-zA-Z0-9._-]/g, '_');
-            const buffer = await decodeImagePayload(payload.data, 15 * 1024 * 1024);
+            const buffer = await decodeImagePayload(payload.data, 50 * 1024 * 1024);
             await fs.promises.writeFile(path.join(framesFolder, safeBaseName), buffer, { flag: 'wx' });
             addLog(`> Frame uploaded: ${safeBaseName}`);
             io.emit('frame_list', listFrames());
@@ -924,7 +924,7 @@ function waitForFile(filePath, timeoutMs = 5000) {
     });
 }
 
-function decodeImagePayload(payload, maxBytes = 5 * 1024 * 1024) {
+function decodeImagePayload(payload, maxBytes = 50 * 1024 * 1024) {
     return new Promise((resolve, reject) => {
         setImmediate(() => {
             try {
@@ -1073,5 +1073,38 @@ function resolveArchivePath(filename) {
     }
     return '';
 }
+
+function listImageNames(folders, pattern) {
+    const names = new Set();
+    folders.forEach(folder => {
+        if (!fs.existsSync(folder)) return;
+        fs.readdirSync(folder)
+            .filter(name => pattern.test(name))
+            .forEach(name => names.add(name));
+    });
+    return [...names].sort((a, b) => a.localeCompare(b));
+}
+
+app.get('/api/frames', (req, res) => {
+    try {
+        res.json(listImageNames(
+            [framesFolder, legacyFramesFolder, bundledFramesFolder],
+            /\.(jpe?g|png|webp)$/i
+        ));
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to load frames.' });
+    }
+});
+
+app.get('/api/archive', (req, res) => {
+    try {
+        res.json(listImageNames(
+            [masterFolder, ...legacyArchiveFolders, bundledArchiveFolder],
+            /^collage_.*\.jpg$/i
+        ));
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to load archive.' });
+    }
+});
 
 server.listen(PORT, () => console.log(` FLIK Master Backend running on port ${PORT}`));
