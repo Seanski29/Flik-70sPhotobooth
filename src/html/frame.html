@@ -44,8 +44,8 @@
                     <h3>Uploaded Frames</h3>
                     <div class="frame-actions">
                         <input id="frameUpload" type="file" accept=".jpg,.jpeg,.png,.webp,image/*" hidden>
-                        <button class="frame-upload" type="button" onclick="document.getElementById('frameUpload').click()">Upload Frame</button>
-                        <button class="frame-save" type="button" onclick="saveActiveFrame()">Save</button>
+                        <button id="uploadFrameButton" class="frame-upload" type="button" onclick="document.getElementById('frameUpload').click()">Upload Frame</button>
+                        <button id="saveFrameButton" class="frame-save" type="button" onclick="saveActiveFrame()">Save</button>
                     </div>
                 </div>
                 <div class="frame-grid" id="frameGrid"><div class="frame-empty">Loading frame library...</div></div>
@@ -72,7 +72,17 @@
             window.frameLibrary = frames;
             renderFrames();
         });
-        socket.on('frame_error', message => alert(message));
+        socket.on('frame_error', message => {
+            setUploadState(false);
+            alert(message);
+        });
+        socket.on('frame_list', () => setUploadState(false));
+
+        function setUploadState(isUploading) {
+            const uploadButton = document.getElementById('uploadFrameButton');
+            uploadButton.disabled = isUploading;
+            uploadButton.textContent = isUploading ? 'Uploading...' : 'Upload Frame';
+        }
 
         function updatePreview() {
             const frame = (window.frameLibrary || []).find(item => item.name === selectedFrame);
@@ -113,9 +123,13 @@
         document.getElementById('frameUpload').addEventListener('change', event => {
             const file = event.target.files[0];
             if (!file) return;
+            setUploadState(true);
             const reader = new FileReader();
             reader.onload = () => socket.emit('upload_frame', { name: file.name, data: reader.result });
-            reader.onerror = () => alert('Unable to read the selected frame.');
+            reader.onerror = () => {
+                setUploadState(false);
+                alert('Unable to read the selected frame.');
+            };
             reader.readAsDataURL(file);
             event.target.value = '';
         });

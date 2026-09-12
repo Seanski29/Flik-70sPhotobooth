@@ -1,4 +1,32 @@
 const filterSocket = io('http://localhost:3001');
+const filterSoundSources = {
+    bill: '../../assets/bill.m4a',
+    green: '../../assets/green.mp3',
+    red: '../../assets/red.mp3',
+    switch: '../../assets/switch.mp3',
+    arcade: '../../assets/arcade.mp3'
+};
+const filterSounds = Object.fromEntries(
+    Object.entries(filterSoundSources).map(([name, source]) => [name, new Audio(source)])
+);
+
+document.body.addEventListener('click', () => {
+    Object.values(filterSounds).forEach(audio => {
+        audio.play().then(() => {
+            audio.pause();
+            audio.currentTime = 0;
+        }).catch(() => {});
+    });
+}, { once: true });
+
+filterSocket.on('sound_effect', name => {
+    const source = filterSounds[name];
+    if (!source) return;
+    const effect = source.cloneNode();
+    effect.volume = source.volume;
+    effect.play().catch(() => {});
+});
+
 const filterDefaults = {
     NORMAL: { name: 'Normal', intensity: 100, grayscale: 0, sepia: 0, contrast: 100, brightness: 100, saturation: 100, hue: 0, invert: 0, blur: 0 },
     NOIR: { name: 'Noir', intensity: 100, grayscale: 100, sepia: 0, contrast: 140, brightness: 95, saturation: 100, hue: 0, invert: 0, blur: 0 },

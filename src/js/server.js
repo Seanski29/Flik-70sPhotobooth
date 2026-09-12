@@ -17,7 +17,7 @@ const io = new Server(server, {
 
 const PORT = 3001;
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '20mb' }));
 
 const masterFolder = path.join(__dirname, '..', 'archive');
 const framesFolder = path.join(__dirname, '..', '..', 'assets', 'frames');
@@ -169,6 +169,10 @@ let normalDebounce;
 let port; 
 let parser;
 let printJobActive = false;
+let billSoundCooldownUntil = 0;
+let systemRedState = null;
+let arcadeRedState = null;
+let greenLedState = null;
 
 function formatDate(date) {
     const day = String(date.getDate()).padStart(2, '0');
@@ -208,17 +212,23 @@ function emitAuditUpdate() {
 
 function listInstalledPrinters() {
     return new Promise((resolve) => {
-        const command = 'Get-CimInstance Win32_Printer | Select-Object Name, PrinterStatus, WorkOffline | ConvertTo-Json -Compress';
-        execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', command], (error, stdout) => {
+        const command = 'Get-CimInstance Win32_Printer | Where-Object Name | Select-Object Name, PrinterStatus, WorkOffline | ConvertTo-Json -Compress';
+        execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', command], {
+            windowsHide: true,
+            timeout: 10000,
+            maxBuffer: 1024 * 1024
+        }, (error, stdout, stderr) => {
             if (error) {
-                addLog('ERROR: Failed to scan installed Windows printers.');
+                addLog(`ERROR: Failed to scan installed Windows printers. ${stderr.trim() || error.message}`);
                 resolve([]);
                 return;
             }
 
             try {
                 const parsed = stdout.trim() ? JSON.parse(stdout) : [];
-                resolve((Array.isArray(parsed) ? parsed : [parsed]).filter(printer => printer.Name));
+                resolve((Array.isArray(parsed) ? parsed : [parsed])
+                    .filter(printer => printer && typeof printer.Name === 'string' && printer.Name.trim())
+                    .sort((a, b) => a.Name.localeCompare(b.Name)));
             } catch (parseError) {
                 addLog('ERROR: Windows returned an invalid printer list.');
                 resolve([]);
@@ -232,17 +242,49 @@ function evaluateLEDState() {
     if (sessionInProgress) return; 
 
     if (isFreePlayMode) {
-        if (port && arduinoConnected) port.write("READY_TO_START\n");
+        sendHardwareCommand('READY_TO_START');
         io.emit('bg_music_command', 'STOP');
         return;
     }
     
     if (availableBalance >= appConfig.sessionPrice) {
-        if (port && arduinoConnected) port.write("READY_TO_START\n");
+        sendHardwareCommand('READY_TO_START');
         io.emit('bg_music_command', 'PLAY');
     } else {
-        if (port && arduinoConnected) port.write("IDLE\n"); 
+        sendHardwareCommand('IDLE');
         io.emit('bg_music_command', 'STOP');
+    }
+}
+
+function emitSoundEffect(name) {
+    io.emit('sound_effect', name);
+}
+
+function sendHardwareCommand(command) {
+    if (port && arduinoConnected) port.write(`${command}\n`);
+
+    if (command === 'IDLE' || command === 'SESSION_START') {
+        const nextSystemRedState = command === 'IDLE';
+        if (systemRedState !== nextSystemRedState) {
+            systemRedState = nextSystemRedState;
+            emitSoundEffect('red');
+        }
+        if (arcadeRedState !== false) arcadeRedState = false;
+    } else if (command === 'READY_TO_START') {
+        if (arcadeRedState !== true) {
+            arcadeRedState = true;
+            emitSoundEffect('arcade');
+        }
+        if (systemRedState !== false) {
+            systemRedState = false;
+            emitSoundEffect('red');
+        }
+    } else if (command === 'GREEN_ON' || command === 'GREEN_OFF') {
+        const nextGreenState = command === 'GREEN_ON';
+        if (greenLedState !== nextGreenState) {
+            greenLedState = nextGreenState;
+            if (nextGreenState) emitSoundEffect('green');
+        }
     }
 }
 
@@ -308,6 +350,8 @@ $document.Dispose()
             return;
         }
         addLog(`> 🖨️ Print job sent to [${appConfig.targetPrinter}] using the configured Windows printer.`);
+        sendHardwareCommand('GREEN_ON');
+        setTimeout(() => sendHardwareCommand('GREEN_OFF'), 10000);
     });
 }
 
@@ -361,12 +405,6 @@ function capturePhoto() {
                     io.emit('bg_music_command', 'STOP');
                     printCollage(collagePath);
                     
-                    if (port && arduinoConnected) port.write("GREEN_ON\n");
-                    
-                    setTimeout(() => {
-                        if (port && arduinoConnected) port.write("GREEN_OFF\n");
-                    }, 10000); 
-                    
                 } catch (err) {
                     addLog(`ERROR: Sharp failed to stitch collage.`);
                     console.error(err);
@@ -417,7 +455,7 @@ async function startSessionLoop(isFreePlay = false) {
     currentSessionPhotos = [];
     io.emit('hardware_update', { type: 'trigger', value: 'START' });
     
-    if (port && arduinoConnected) port.write("SESSION_START\n");
+    sendHardwareCommand('SESSION_START');
     // BG Music intentionally NOT stopped here so it plays during the session!
 
     let photoCount = 0;
@@ -467,22 +505,25 @@ async function connectToHardware() {
         port = new SerialPort({ path: targetPort.path, baudRate: 115200, autoOpen: false });
         parser = port.pipe(new ReadlineParser({ delimiter: '\r\n' }));
 
-        port.on('error', (err) => {
+        const handleDisconnect = (message) => {
             if (arduinoConnected) addLog(`ERROR: Arduino connection lost!`);
             arduinoConnected = false;
             isConnecting = false;
-        });
+            if (message) addLog(`> ${message}`);
+            port = undefined;
+            parser = undefined;
+        };
+
+        port.on('error', () => handleDisconnect('Arduino will be rediscovered automatically.'));
 
         port.on('close', () => {
-            if (arduinoConnected) addLog(`ERROR: Arduino unplugged!`);
-            arduinoConnected = false;
-            isConnecting = false;
+            handleDisconnect('Arduino unplugged. Waiting for reconnection.');
         });
 
         port.open((err) => {
             isConnecting = false;
             if (err) {
-                arduinoConnected = false;
+                handleDisconnect(`Arduino connection failed on ${targetPort.path}.`);
             } else {
                 arduinoConnected = true;
                 addLog(`>  System linked to Arduino on ${targetPort.path}`);
@@ -500,8 +541,9 @@ async function connectToHardware() {
             if (cleanData.includes('FILTER_1')) cleanData = 'FILTER: NOIR';
             else if (cleanData.includes('FILTER_2')) cleanData = 'FILTER: FILM_II';
 
-            if (cleanData.includes('FILTER')) {
+            if (cleanData.startsWith('FILTER:')) {
                 const incomingFilter = cleanData.replace('FILTER:', '').trim();
+                emitSoundEffect('switch');
                 if (!sessionInProgress) {
                     if (incomingFilter !== 'NORMAL') {
                         clearTimeout(normalDebounce);
@@ -547,7 +589,11 @@ async function connectToHardware() {
                     availableBalance += newlyInserted;
                     arduinoTotal = currentArduinoVal;
                     
-                    io.emit('pulse_received'); 
+                    io.emit('pulse_received');
+                    if (Date.now() >= billSoundCooldownUntil) {
+                        billSoundCooldownUntil = Date.now() + 2000;
+                        emitSoundEffect('bill');
+                    }
                     io.emit('hardware_update', { type: 'balance', value: availableBalance });
                     addLog(`>  Bill Detected: Added ${newlyInserted} PHP.`);
                 }
@@ -595,7 +641,7 @@ io.on('connection', (socket) => {
 
         isFreePlayMode = enabled;
         if (isFreePlayMode) {
-            if (port && arduinoConnected) port.write("READY_TO_START\n");
+            sendHardwareCommand('READY_TO_START');
             io.emit('bg_music_command', 'STOP');
             addLog('> Free Play mode enabled. Bill acceptance is ignored.');
         } else {
@@ -648,7 +694,7 @@ io.on('connection', (socket) => {
         socket.emit('frame_list', listFrames());
     });
 
-    socket.on('upload_frame', (payload) => {
+    socket.on('upload_frame', async (payload) => {
         try {
             if (!payload || typeof payload.name !== 'string' || typeof payload.data !== 'string') {
                 throw new Error('Invalid frame upload payload.');
@@ -658,12 +704,8 @@ io.on('connection', (socket) => {
                 throw new Error('Only JPG, PNG, and WebP frames are supported.');
             }
             const safeBaseName = path.basename(payload.name).replace(/[^a-zA-Z0-9._-]/g, '_');
-            const data = payload.data.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, '');
-            const buffer = Buffer.from(data, 'base64');
-            if (!buffer.length || buffer.length > 15 * 1024 * 1024) {
-                throw new Error('Frame must be between 1 byte and 15 MB.');
-            }
-            fs.writeFileSync(path.join(framesFolder, safeBaseName), buffer, { flag: 'wx' });
+            const buffer = await decodeImagePayload(payload.data, 15 * 1024 * 1024);
+            await fs.promises.writeFile(path.join(framesFolder, safeBaseName), buffer, { flag: 'wx' });
             addLog(`> Frame uploaded: ${safeBaseName}`);
             io.emit('frame_list', listFrames());
         } catch (error) {
@@ -686,7 +728,7 @@ io.on('connection', (socket) => {
         addLog(`> Active frame set to [${filename}].`);
     });
 
-    socket.on('delete_frame', (filename) => {
+    socket.on('delete_frame', async (filename) => {
         if (typeof filename !== 'string' || filename !== path.basename(filename)) {
             socket.emit('frame_error', 'Invalid frame filename.');
             return;
@@ -699,7 +741,7 @@ io.on('connection', (socket) => {
         }
 
         try {
-            fs.unlinkSync(framePath);
+            await fs.promises.unlink(framePath);
             if (appConfig.activeFrame === filename) {
                 appConfig.activeFrame = '';
                 saveConfig();
@@ -720,7 +762,7 @@ io.on('connection', (socket) => {
 
     socket.on('upload_archive_photo', async (payload) => {
         try {
-            const buffer = decodeImagePayload(payload);
+            const buffer = await decodeImagePayload(payload);
             const filename = `collage_upload_${Date.now()}.jpg`;
             await sharp(buffer).jpeg({ quality: 90 }).toFile(path.join(masterFolder, filename));
             addLog(`> Archive photo uploaded: ${filename}`);
@@ -740,7 +782,7 @@ io.on('connection', (socket) => {
                 throw new Error('Select a valid frame before creating the strip.');
             }
 
-            const photos = payload.photos.map(decodeImagePayload);
+            const photos = await Promise.all(payload.photos.map(decodeImagePayload));
             const filename = `collage_custom_${Date.now()}.jpg`;
             await createCustomCollage(photos, path.join(masterFolder, filename), path.join(framesFolder, frameName));
             addLog(`> Custom Strip saved: ${filename}`);
@@ -772,7 +814,7 @@ io.on('connection', (socket) => {
 
     socket.on('test_led', (cmd) => {
         if (port && arduinoConnected) {
-            port.write(cmd + "\n");
+            sendHardwareCommand(cmd);
             addLog(`>  HARDWARE TEST: Sent ${cmd} to Arduino.`);
         } else {
             addLog(`ERROR: Cannot test LED. Arduino not connected.`);
@@ -865,15 +907,23 @@ function waitForFile(filePath, timeoutMs = 5000) {
     });
 }
 
-function decodeImagePayload(payload) {
-    if (typeof payload !== 'string' || !/^data:image\/(?:jpeg|jpg|png|webp);base64,/i.test(payload)) {
-        throw new Error('Only JPG, PNG, and WebP images are supported.');
-    }
-    const buffer = Buffer.from(payload.replace(/^data:image\/(?:jpeg|jpg|png|webp);base64,/i, ''), 'base64');
-    if (!buffer.length || buffer.length > 5 * 1024 * 1024) {
-        throw new Error('Each image must be between 1 byte and 5 MB.');
-    }
-    return buffer;
+function decodeImagePayload(payload, maxBytes = 5 * 1024 * 1024) {
+    return new Promise((resolve, reject) => {
+        setImmediate(() => {
+            try {
+                if (typeof payload !== 'string' || !/^data:image\/(?:jpeg|jpg|png|webp);base64,/i.test(payload)) {
+                    throw new Error('Only JPG, PNG, and WebP images are supported.');
+                }
+                const buffer = Buffer.from(payload.replace(/^data:image\/(?:jpeg|jpg|png|webp);base64,/i, ''), 'base64');
+                if (!buffer.length || buffer.length > maxBytes) {
+                    throw new Error(`Image must be between 1 byte and ${Math.round(maxBytes / (1024 * 1024))} MB.`);
+                }
+                resolve(buffer);
+            } catch (error) {
+                reject(error);
+            }
+        });
+    });
 }
 
 async function createCustomCollage(photos, outputPath, framePath) {
