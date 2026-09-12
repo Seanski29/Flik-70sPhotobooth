@@ -13,6 +13,9 @@
             width: 100vw;
             overflow: hidden; 
             margin: 0; 
+            background: #0a0a0a;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
         #sidebar-container {
@@ -21,13 +24,9 @@
 
         .workspace {
             height: 100vh;
-            width: auto;
-            min-width: 0;
-            min-height: 0;
-            flex: 1 1 auto;
-            overflow: hidden;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
         }
 
         .workspace-header {
@@ -35,193 +34,210 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 15px 20px 5px 20px;
+            padding: 15px 20px 10px 20px;
         }
+
+        .page-title { margin: 0; font-size: 22px; font-weight: bold; letter-spacing: 1px; }
+        .page-subtitle { margin: 0; color: #888; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; }
 
         .dashboard-container { 
             flex: 1 1 auto;
             display: flex; 
+            flex-direction: row;
             gap: 15px;
             padding: 0 20px 20px 20px;
             overflow: hidden; 
-            min-height: 0; 
-            min-width: 0;
         }
 
-        /* LEFT COLUMN (Terminal - ONLY SCROLLABLE AREA) */
+        /* --- LEFT COLUMN: TERMINAL --- */
         .terminal-container { 
-            flex: 1.15;
+            flex: 0 0 380px; 
             display: flex; 
             flex-direction: column; 
-            min-height: 0;
             background: #111;
             border: 1px solid #333;
             border-radius: 8px;
+            overflow: hidden;
         }
         
         .terminal { 
             flex: 1; 
             overflow-y: auto; 
             padding: 15px;
-            font-family: monospace;
+            font-family: 'Consolas', monospace;
             font-size: 13px;
+            line-height: 1.5;
         }
 
-        /* RIGHT COLUMN: preview/status stay fixed; operator controls can scroll */
+        /* --- RIGHT COLUMN: MAIN CONTROLS --- */
         .right-column { 
-            flex: 0.85;
-            min-width: 430px;
-            min-height: 0;
+            flex: 1; 
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            overflow: hidden; 
-        }
-
-        .visual-row { 
-            flex: 0 0 210px;
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 10px; 
-        }
-
-        .preview-card { 
-            background: rgba(0,0,0,0.72); 
-            border: 1px solid #444; 
-            border-radius: 8px; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center;
+            gap: 15px;
+            min-width: 0;
             overflow: hidden;
         }
 
-        .preview-card img { 
-            width: 100%; 
-            height: 100%; 
-            object-fit: contain; 
+        /* Top Row: Visuals and Status side-by-side */
+        .top-row {
+            flex: 0 0 220px;
+            display: flex;
+            gap: 15px;
         }
 
-        .active-frame-card { 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: space-between;
-            padding: 10px; 
-            background: rgba(0,0,0,0.72); 
-            border: 1px solid #444; 
-            border-radius: 8px; 
-        }
-
-        .active-frame-card h3 { font-size: 13px; margin: 0 0 5px 0; color: #fff; width: 100%; text-align: left; }
-        .active-frame-card img { flex: 1; min-height: 0; width: auto; max-width: 100%; object-fit: contain; border-radius: 4px; background: #000; }
-        .active-frame-card a { color: #4ade80; font-size: 11px; text-decoration: none; margin-top: 5px; font-weight: bold; }
-
-        .panel-box { 
-            flex: 0 0 auto; 
+        .visuals-card {
+            flex: 2;
             background: #1a1a1a;
             border: 1px solid #333;
             border-radius: 8px;
-            padding: 12px 15px; 
-        }
-        
-        .operator-panel {
-            flex: 1 1 0;
-            min-height: 0;
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            align-content: start;
-            gap: 10px;
-            overflow-y: auto;
-            overflow-x: hidden;
-            scrollbar-width: thin;
-            scrollbar-color: #555 #1a1a1a;
+            padding: 12px;
+            display: flex;
+            gap: 12px;
         }
 
-        .operator-panel::-webkit-scrollbar {
-            width: 8px;
+        .cam-preview-wrapper {
+            flex: 1;
+            background: #000;
+            border: 1px solid #444;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
         }
+        .cam-preview-wrapper img { width: 100%; height: 100%; object-fit: contain; }
 
-        .operator-panel::-webkit-scrollbar-track {
+        .frame-preview-wrapper {
+            flex: 0 0 140px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid #444;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+        }
+        .frame-preview-wrapper h3 { margin: 0 0 10px 0; font-size: 12px; color: #aaa; text-transform: uppercase; border: none; }
+        .frame-preview-wrapper img { flex: 1; width: 100%; object-fit: contain; min-height: 0; background: #000; border-radius: 4px; }
+        .frame-preview-wrapper a { color: #4ade80; font-size: 12px; text-decoration: none; margin-top: 8px; font-weight: bold; }
+
+        .status-card {
+            flex: 1;
             background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
         }
+        .status-card h3 { margin: 0 0 12px 0; font-size: 14px; color: #fff; border-bottom: 1px solid #333; padding-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
 
-        .operator-panel::-webkit-scrollbar-thumb {
-            background: #555;
-            border-radius: 4px;
+        .status-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex: 1;
         }
-
-        .operator-panel > div:last-child {
-            grid-column: 1 / -1;
-        }
-
-        .compact-status { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr; 
-            gap: 10px; 
-            margin-top: 5px;
-        }
-        
-        .metric { font-size: 13px; color: #aaa; display: flex; align-items: center; justify-content: space-between; background: #222; padding: 6px 10px; border-radius: 4px; }
+        .metric { font-size: 13px; color: #aaa; display: flex; align-items: center; justify-content: space-between; background: #222; padding: 10px 12px; border-radius: 6px; }
         .metric-value { font-weight: bold; color: #fff; }
-        .printer-status { grid-column: span 2; }
-        
-        h3 { margin: 0 0 8px 0; font-size: 14px; color: #e5e7eb; border-bottom: 1px solid #333; padding-bottom: 4px; }
-        
-        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-        .btn-test, .btn-op { padding: 8px 5px; font-size: 12px; font-weight: bold; border: none; border-radius: 4px; color: white; cursor: pointer; transition: 0.2s ease; text-align: center; }
-        .btn-op:hover { filter: brightness(1.2); }
+
+        /* Bottom Row: 3 Control Panels */
+        .bottom-row {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            min-height: 0;
+        }
+
+        .control-panel {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+        .control-panel h3 { margin: 0 0 12px 0; font-size: 13px; color: #fff; border-bottom: 1px solid #333; padding-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+
+        .btn-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        .btn-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+        .btn-grid.cols-1 { grid-template-columns: 1fr; }
+
+        .btn-op, .btn-test {
+            padding: 10px 8px;
+            font-size: 12px;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            text-align: center;
+            transition: background 0.2s;
+        }
+        .btn-op:hover, .btn-test:hover { filter: brightness(1.2); }
+        .span-2 { grid-column: span 2; }
 
         /* BA Off / Free Play Button Specifics */
-        #btnFreePlay { background: #dc2626; color: white; font-size: 13px; }
+        #btnFreePlay { background: #dc2626; color: white; font-size: 13px; padding: 12px 10px; }
         #btnFreePlay.active { background: #16a34a; }
+
+        /* Settings specific styles */
+        .settings-row { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
+        .slider-box { flex: 1; background: #222; padding: 8px 12px; border-radius: 6px; display: flex; flex-direction: column; justify-content: center; }
+        .slider-box label { font-size: 11px; color: #aaa; margin-bottom: 6px; display: flex; justify-content: space-between; }
+        
+        input[type=range] { appearance: none; -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 14px; width: 14px; border-radius: 50%; background: #ef4444; cursor: pointer; margin-top: -4px; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 5px; cursor: pointer; background: #555; border-radius: 3px; }
 
         /* Printer Modal */
         .printer-settings-modal { display: none; position: fixed; inset: 0; z-index: 9000; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.85); }
-        .printer-settings-box { width: 400px; padding: 25px; color: #fff; background: #1e1e1e; border: 1px solid #444; border-radius: 8px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8); }
-        .printer-settings-box h2 { margin: 0 0 10px; font-size: 20px; color: #4ade80; }
-        .printer-settings-box p { margin: 0 0 20px; color: #bbb; font-size: 13px; line-height: 1.4; }
-        .printer-settings-box select { width: 100%; padding: 12px; color: #fff; background: #2b2b2b; border: 1px solid #555; border-radius: 5px; font-size: 14px; }
-        .printer-settings-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
-        .printer-settings-actions button { padding: 10px 20px; border: 0; border-radius: 5px; color: #fff; cursor: pointer; font-weight: bold; }
+        .printer-settings-box { width: 420px; padding: 25px; color: #fff; background: #1e1e1e; border: 1px solid #444; border-radius: 8px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8); }
+        .printer-settings-box h2 { margin: 0 0 10px; font-size: 18px; color: #4ade80; }
+        .printer-settings-box p { margin: 0 0 20px; color: #bbb; font-size: 13px; line-height: 1.5; }
+        .printer-settings-box select { width: 100%; padding: 10px; color: #fff; background: #2b2b2b; border: 1px solid #555; border-radius: 5px; font-size: 13px; }
+        .printer-settings-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px; }
+        .printer-settings-actions button { padding: 8px 16px; border: 0; border-radius: 5px; color: #fff; cursor: pointer; font-weight: bold; font-size: 12px; }
         .printer-settings-actions .cancel { background: #555; }
         .printer-settings-actions .save { background: #2563eb; }
 
-        @media (max-width: 1150px) {
-            .right-column { min-width: 390px; }
-            .operator-panel { grid-template-columns: 1fr; }
-            .operator-panel > div:last-child { grid-column: auto; }
-        }
-
-        /* Slider */
-        input[type=range] { appearance: none; -webkit-appearance: none; width: 100%; background: transparent; margin-top: 5px; }
-        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%; background: #ef4444; cursor: pointer; margin-top: -6px; }
-        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: #555; border-radius: 3px; }
+        /* Overlay */
+        #resultOverlay { display: none; position: fixed; inset: 0; z-index: 8000; background: rgba(0,0,0,0.9); flex-direction: column; align-items: center; justify-content: center; }
+        #resultOverlay img { max-height: 80vh; max-width: 90vw; border: 2px solid #333; border-radius: 8px; }
+        .close-overlay-btn { position: absolute; top: 20px; right: 30px; background: none; border: none; color: #fff; font-size: 40px; cursor: pointer; }
     </style>
 </head>
 <body class="app-layout">
 
     <div class="page-loader" id="page-loader" role="status" aria-label="Loading dashboard">
-        <!-- Loader content remains identical -->
+        <!-- Loader content -->
     </div>
 
     <div id="sidebar-container"></div> 
 
     <div id="resultOverlay">
         <button class="close-overlay-btn" onclick="closeResultOverlay()">&times;</button>
-        <h2 style="color: #4ade80; margin-bottom: 20px; font-family: 'Inter', sans-serif;">Session Complete!</h2>
+        <h2 style="color: #4ade80; margin-bottom: 20px; font-family: 'Segoe UI', sans-serif;">Session Complete</h2>
         <img id="finalCollageImg" src="" alt="Final Strip">
     </div>
 
     <main class="workspace">
         <header class="workspace-header">
             <div>
-                <h2 class="page-title" style="margin: 0; font-size: 22px;">SYSTEM DASHBOARD</h2>
-                <p class="page-subtitle" style="margin: 0; color: #888; font-size: 14px;">Event Command Center</p>
+                <h2 class="page-title">SYSTEM DASHBOARD</h2>
+                <p class="page-subtitle">Event Command Center</p>
             </div>
-            <button class="btn-op btn-filter" style="background: #444; padding: 8px 20px;" onclick="clearTerminal()">CLEAR LOGS</button>
+            <button class="btn-op btn-filter" style="background: #444; padding: 8px 20px; font-size: 12px;" onclick="clearTerminal()">CLEAR LOGS</button>
         </header>
 
         <div class="dashboard-container">
+            
             <!-- TERMINAL SECTION -->
             <div class="terminal-container">
                 <div class="terminal" id="terminalBox">
@@ -232,73 +248,73 @@
             <!-- CONTROLS SECTION -->
             <div class="right-column">
                 
-                <!-- ROW 1: Visuals -->
-                <div class="visual-row">
-                    <div class="preview-card">
-                        <img id="webcam-preview" class="filter-NORMAL" src="http://127.0.0.1:5514/live" alt="Live camera preview">
+                <!-- TOP ROW: Visuals & Live Status -->
+                <div class="top-row">
+                    <div class="visuals-card">
+                        <div class="cam-preview-wrapper">
+                            <img id="webcam-preview" class="filter-NORMAL" src="http://127.0.0.1:5513/liveview.jpg" alt="Live camera preview">
+                        </div>
+                        <div class="frame-preview-wrapper">
+                            <h3>Active Frame</h3>
+                            <img id="dashboardFramePreview" alt="Current frame">
+                            <a href="frame.html">Change Frame</a>
+                        </div>
                     </div>
-                    <div class="active-frame-card">
-                        <h3>Active Frame</h3>
-                        <img id="dashboardFramePreview" alt="Current frame">
-                        <a href="frame.html">Change Frame ➔</a>
+
+                    <div class="status-card">
+                        <h3>Live Status</h3>
+                        <div class="status-grid">
+                            <div class="metric">Balance: <span class="metric-value" id="balanceDisplay" style="color: #4ade80;">0 / 200 PHP</span></div>
+                            <div class="metric">Filter: <span class="metric-value" id="filterDisplay">NORMAL</span></div>
+                            <div class="metric">Status: <span class="metric-value" id="sessionDisplay" style="color: #4ade80;">IDLE</span></div>
+                            <div class="metric">Printer: <span class="metric-value" id="printerDisplay">None selected</span></div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- ROW 2: Live Status -->
-                <div class="panel-box">
-                    <h3>Live Status</h3>
-                    <div class="compact-status">
-                        <div class="metric">Balance: <span class="metric-value" id="balanceDisplay" style="color: #4ade80;">0 / 200 PHP</span></div>
-                        <div class="metric">Filter: <span class="metric-value" id="filterDisplay">NORMAL</span></div>
-                        <div class="metric">Status: <span class="metric-value" id="sessionDisplay" style="color: #4ade80;">IDLE</span></div>
-                        <div class="metric printer-status">Printer: <span class="metric-value" id="printerDisplay">None selected</span></div>
-                    </div>
-                </div>
-
-                <!-- ROW 3: Operator Controls (Auto-Fills remaining height) -->
-                <div class="panel-box operator-panel">
+                <!-- BOTTOM ROW: 3 Control Panels side-by-side -->
+                <div class="bottom-row">
                     
-                    <div>
+                    <!-- Panel 1: Hardware -->
+                    <div class="control-panel">
                         <h3>Hardware Tests</h3>
-                        <div class="grid-3">
+                        <div class="btn-grid">
                             <button id="btnTestSysRed" class="btn-test" style="background: #991b1b;" onclick="toggleSysRedLED()">Sys Red: ON</button>
                             <button id="btnTestArcRed" class="btn-test" style="background: #7f1d1d;" onclick="toggleArcadeRedLED()">Arcade Red: OFF</button>
-                            <button id="btnTestGreen" class="btn-test" style="background: #14532d;" onclick="toggleGreenLED()">Green LED: OFF</button>
-                        </div>
-                        <div class="grid-3" style="margin-top: 8px;">
-                            <button id="btnTestAudio" class="btn-test" style="background: #3b82f6; grid-column: span 1;" onclick="toggleTestAudio()">Test Count 🔊</button>
-                            <button id="btnTestBGAudio" class="btn-test" style="background: #8b5cf6; grid-column: span 2;" onclick="toggleBGAudio()">Test BG Music 🎵</button>
+                            <button id="btnTestGreen" class="btn-test span-2" style="background: #14532d;" onclick="toggleGreenLED()">Printer Green LED: OFF</button>
+                            <button id="btnTestAudio" class="btn-test" style="background: #3b82f6;" onclick="toggleTestAudio()">Test Count Audio</button>
+                            <button id="btnTestBGAudio" class="btn-test" style="background: #8b5cf6;" onclick="toggleBGAudio()">Test BG Music</button>
                         </div>
                     </div>
 
-                    <div>
+                    <!-- Panel 2: Settings -->
+                    <div class="control-panel">
                         <h3>Settings & Filters</h3>
-                        <div class="grid-3" style="margin-bottom: 8px;">
+                        <div class="btn-grid cols-3">
                             <button class="btn-op btn-filter" style="background: #4b5563;" onclick="setManualFilter('NORMAL')">Normal</button>
                             <button class="btn-op btn-filter" style="background: #374151;" onclick="setManualFilter('NOIR')">Noir</button>
                             <button class="btn-op btn-filter" style="background: #1f2937;" onclick="setManualFilter('FILM_II')">Film II</button>
                         </div>
-                        <div class="grid-3" style="align-items: center;">
-                            <button class="btn-op btn-filter" style="background: #2563eb; grid-column: span 1;" type="button" onclick="openPrinterSettings()">Select Printer</button>
-                            <div style="grid-column: span 2; background: #222; padding: 6px 12px; border-radius: 4px; display: flex; flex-direction: column;">
-                                <label style="font-size: 12px; color: #ccc; margin-bottom: 4px;">Photo Delay: <span id="timerLabel" style="color:#ef4444; font-weight: bold;">10</span>s</label>
+                        <div class="settings-row">
+                            <button class="btn-op" style="background: #2563eb; flex: 1;" type="button" onclick="openPrinterSettings()">Select Printer</button>
+                            <div class="slider-box">
+                                <label>Photo Delay: <span id="timerLabel" style="color:#ef4444; font-weight: bold;">10s</span></label>
                                 <input type="range" id="timerSlider" min="3" max="10" value="10">
                             </div>
                         </div>
-                        <button class="btn-op btn-filter" style="background: #4b5563; width: 100%; margin-top: 8px;" type="button" onclick="toggleFullscreen()">Toggle Full Screen</button>
+                        <button class="btn-op" style="background: #444; margin-top: 8px;" type="button" onclick="toggleFullscreen()">Toggle Full Screen</button>
                     </div>
-                    
-                    <div>
-                        <h3>Overrides & Session Controls</h3>
-                        <div class="grid-3">
+
+                    <!-- Panel 3: Session Overrides -->
+                    <div class="control-panel">
+                        <h3>Overrides</h3>
+                        <div class="btn-grid">
                             <button id="btnForceStart" class="btn-op" style="background: #d97706;">Force Start</button>
                             <button class="btn-op" style="background: #0d9488;" onclick="resetBalance()">Reset Cash</button>
-                            <button id="btnAbort" class="btn-op" style="background: #b91c1c;">Abort Session</button>
-                            <button id="btnRestart" class="btn-op" style="background: #4338ca; grid-column: span 2;" onclick="triggerSystemRestart()">Restart System</button>
-                            
-                            <!-- THE BA OFF / FREE PLAY BUTTON -->
-                            <button id="btnFreePlay" class="btn-op" onclick="toggleFreePlay()">BA Off</button>
+                            <button id="btnAbort" class="btn-op span-2" style="background: #b91c1c;">Abort Active Session</button>
+                            <button id="btnRestart" class="btn-op span-2" style="background: #4338ca;" onclick="triggerSystemRestart()">Restart System</button>
                         </div>
+                        <button id="btnFreePlay" class="btn-op" style="margin-top: 8px; width: 100%;" onclick="toggleFreePlay()">Turn Off Bill Acceptor</button>
                     </div>
 
                 </div>
@@ -385,19 +401,19 @@
 
         socket.on('sound_effect', playSoundEffect);
 
-        countdownAudio.onended = () => { document.getElementById('btnTestAudio').innerHTML = "Test Count 🔊"; };
+        countdownAudio.onended = () => { document.getElementById('btnTestAudio').innerHTML = "Test Count Audio"; };
 
         function toggleTestAudio() {
             const btn = document.getElementById('btnTestAudio');
             if (countdownAudio.paused) {
                 countdownAudio.currentTime = 0;
                 countdownAudio.play().then(() => {
-                    btn.innerHTML = "⏹ Stop Count";
+                    btn.innerHTML = "Stop Count";
                     appendLog("> Audio test playing.");
-                }).catch(err => appendLog("ERROR: ❌ Audio blocked."));
+                }).catch(err => appendLog("ERROR: Audio blocked."));
             } else {
                 countdownAudio.pause(); countdownAudio.currentTime = 0;
-                btn.innerHTML = "Test Count 🔊";
+                btn.innerHTML = "Test Count Audio";
             }
         }
 
@@ -413,11 +429,11 @@
         function toggleBGAudio() {
             const btn = document.getElementById('btnTestBGAudio');
             if (bgAudio.paused) {
-                bgAudio.play().then(() => { btn.innerHTML = "⏹ Stop BG Music"; })
-                       .catch(err => appendLog("ERROR: ❌ BG Audio blocked."));
+                bgAudio.play().then(() => { btn.innerHTML = "Stop BG Music"; })
+                       .catch(err => appendLog("ERROR: BG Audio blocked."));
             } else {
                 bgAudio.pause(); bgAudio.currentTime = 0;
-                btn.innerHTML = "Test BG Music 🎵";
+                btn.innerHTML = "Test BG Music";
             }
         }
 
@@ -454,7 +470,7 @@
                 freePlayButton.innerText = 'Free Play: ON';
             } else {
                 freePlayButton.classList.remove('active');
-                freePlayButton.innerText = 'BA Off';
+                freePlayButton.innerText = 'Turn Off Bill Acceptor';
             }
         }
 
@@ -528,36 +544,11 @@
             dashboardFramePreview.src = active ? `http://localhost:3001/frames/${encodeURIComponent(active)}` : '';
         });
 
-        // Use the smooth MJPEG stream whenever Electron can render it. Keep
-        // the still endpoint as a fallback for machines where MJPEG is blocked.
-        const liveStreamUrl = 'http://127.0.0.1:5514/live';
         const liveStillUrl = 'http://127.0.0.1:5513/liveview.jpg';
-        let liveViewRefresh;
-        let streamRetry;
-
-        const clearPreviewTimers = () => {
-            clearInterval(liveViewRefresh);
-            clearInterval(streamRetry);
-        };
-
         const refreshLiveStill = () => {
             liveView.src = `${liveStillUrl}?t=${Date.now()}`;
         };
-
-        const useStillFallback = () => {
-            clearPreviewTimers();
-            refreshLiveStill();
-            liveViewRefresh = setInterval(refreshLiveStill, 750);
-            streamRetry = setInterval(startLiveStream, 10000);
-        };
-
-        function startLiveStream() {
-            clearPreviewTimers();
-            liveView.src = `${liveStreamUrl}?t=${Date.now()}`;
-        }
-
-        liveView.addEventListener('error', useStillFallback);
-        startLiveStream();
+        setInterval(refreshLiveStill, 200);
 
         // TERMINAL LOGIC
         socket.on('terminal_history', (historyArray) => {
@@ -584,11 +575,11 @@
         }
 
         // TIMER & FILTERS
-        timerSlider.addEventListener('input', (e) => { timerLabel.innerText = e.target.value; });
+        timerSlider.addEventListener('input', (e) => { timerLabel.innerText = e.target.value + 's'; });
         timerSlider.addEventListener('change', (e) => { socket.emit('update_countdown', e.target.value); });
         socket.on('sync_timer', (val) => {
             timerSlider.value = val;
-            timerLabel.innerText = val;
+            timerLabel.innerText = val + 's';
         });
         
         socket.on('countdown_tick', (second) => {
@@ -703,10 +694,10 @@
             const btn = document.getElementById('btnTestGreen');
             if (isGreenTestOn) {
                 socket.emit('test_led', 'GREEN_ON');
-                btn.style.background = '#22c55e'; btn.innerText = 'Green LED: ON';
+                btn.style.background = '#22c55e'; btn.innerText = 'Printer Green LED: ON';
             } else {
                 socket.emit('test_led', 'GREEN_OFF');
-                btn.style.background = '#14532d'; btn.innerText = 'Green LED: OFF';
+                btn.style.background = '#14532d'; btn.innerText = 'Printer Green LED: OFF';
             }
         }
 
@@ -722,11 +713,11 @@
             isArcRedOn = false;
             document.getElementById('btnTestArcRed').style.background = '#7f1d1d'; document.getElementById('btnTestArcRed').innerText = 'Arcade Red: OFF';
             isGreenTestOn = false;
-            document.getElementById('btnTestGreen').style.background = '#14532d'; document.getElementById('btnTestGreen').innerText = 'Green LED: OFF';
+            document.getElementById('btnTestGreen').style.background = '#14532d'; document.getElementById('btnTestGreen').innerText = 'Printer Green LED: OFF';
         });
 
         function triggerSystemRestart() {
-            if (confirm("⚠️ Are you sure you want to completely reboot the system?")) {
+            if (confirm("Are you sure you want to completely reboot the system Node?")) {
                 socket.emit('restart_system');
                 setTimeout(() => { location.reload(); }, 4000);
             }

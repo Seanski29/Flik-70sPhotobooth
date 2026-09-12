@@ -41,6 +41,12 @@ const message = document.getElementById('filter-message');
 const status = document.getElementById('hardware-status');
 const fieldKeys = ['intensity', 'grayscale', 'sepia', 'contrast', 'brightness', 'saturation', 'hue', 'invert', 'blur'];
 
+const liveViewUrl = 'http://127.0.0.1:5513/liveview.jpg';
+const refreshLiveView = () => {
+    preview.src = `${liveViewUrl}?t=${Date.now()}`;
+};
+setInterval(refreshLiveView, 200);
+
 function cssFilter(filter) {
     const amount = Number(filter.intensity) / 100;
     const scale = (value, neutral) => neutral + (Number(value) - neutral) * amount;
