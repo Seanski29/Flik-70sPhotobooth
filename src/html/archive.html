@@ -104,7 +104,7 @@
             </div>
             <div class="custom-strip-footer">
                 <button class="custom-strip-cancel" type="button" onclick="closeCustomStrip()">Cancel</button>
-                <button class="custom-strip-save" type="button" onclick="saveCustomStrip()">Save to Archive</button>
+                <button id="customStripSaveButton" class="custom-strip-save" type="button" onclick="saveCustomStrip()">Save to Archive</button>
             </div>
         </div>
     </div>
@@ -117,7 +117,7 @@
             </div>
             <div class="archive-actions">
                 <input id="archiveUploadInput" type="file" accept="image/jpeg,image/png,image/webp" hidden>
-                <button class="archive-upload" type="button" onclick="document.getElementById('archiveUploadInput').click()">Upload Picture</button>
+                <button id="archiveUploadButton" class="archive-upload" type="button" onclick="document.getElementById('archiveUploadInput').click()">Upload Picture</button>
                 <button class="custom-strip-button" type="button" onclick="openCustomStrip()">Custom Strip</button>
                 <button type="button" onclick="loadGallery()" style="background: #3b82f6;">Refresh Grid</button>
             </div>
@@ -155,12 +155,23 @@
             if (active) select.value = active;
         });
         socket.on('archive_photo_saved', loadGallery);
+        socket.on('archive_photo_saved', () => setArchiveBusy(false));
         socket.on('custom_strip_saved', () => {
+            setArchiveBusy(false);
             closeCustomStrip();
             loadGallery();
             alert('Custom Strip saved to the archive.');
         });
-        socket.on('archive_error', message => alert(message));
+        socket.on('archive_error', message => {
+            setArchiveBusy(false);
+            alert(message);
+        });
+
+        function setArchiveBusy(isBusy) {
+            document.getElementById('archiveUploadButton').disabled = isBusy;
+            document.getElementById('customStripSaveButton').disabled = isBusy;
+            document.getElementById('customStripSaveButton').textContent = isBusy ? 'Processing...' : 'Save to Archive';
+        }
 
         async function loadGallery() {
             const grid = document.getElementById('galleryGrid');
@@ -213,8 +224,10 @@
             event.target.value = '';
             if (!file) return;
             try {
+                setArchiveBusy(true);
                 socket.emit('upload_archive_photo', await imageToDataUrl(file));
             } catch (error) {
+                setArchiveBusy(false);
                 alert(error.message);
             }
         });
@@ -308,6 +321,7 @@
                 alert('Custom Strip requires between 4 and 8 pictures.');
                 return;
             }
+            setArchiveBusy(true);
             socket.emit('create_custom_strip', {
                 photos: customPhotos,
                 frame: document.getElementById('customFrameSelect').value

@@ -1,10 +1,17 @@
-const { app, BrowserWindow, dialog } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain } = require('electron');
 const { fork } = require('child_process');
 const path = require('path');
 
 let mainWindow;
 let serverProcess;
 let isQuitting = false;
+
+ipcMain.handle('toggle-fullscreen', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (!window) return false;
+    window.setFullScreen(!window.isFullScreen());
+    return window.isFullScreen();
+});
 
 function createWindow() {
     // 1. Start your backend server silently in the background
@@ -21,7 +28,8 @@ function createWindow() {
         autoHideMenuBar: true, // Hides the standard web browser File/Edit menu
         webPreferences: {
             nodeIntegration: false,
-            contextIsolation: true
+            contextIsolation: true,
+            preload: path.join(__dirname, 'preload.js')
         }
     });
 
