@@ -10,7 +10,10 @@ const sharp = require('sharp');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } });
+const io = new Server(server, {
+    cors: { origin: "*", methods: ["GET", "POST"] },
+    maxHttpBufferSize: 20 * 1024 * 1024
+});
 
 const PORT = 3001;
 app.use(cors());
@@ -715,6 +718,38 @@ io.on('connection', (socket) => {
         if (fs.existsSync(imagePath)) printCollage(imagePath);
     });
 
+    socket.on('upload_archive_photo', async (payload) => {
+        try {
+            const buffer = decodeImagePayload(payload);
+            const filename = `collage_upload_${Date.now()}.jpg`;
+            await sharp(buffer).jpeg({ quality: 90 }).toFile(path.join(masterFolder, filename));
+            addLog(`> Archive photo uploaded: ${filename}`);
+            socket.emit('archive_photo_saved', { filename });
+        } catch (error) {
+            socket.emit('archive_error', error.message);
+        }
+    });
+
+    socket.on('create_custom_strip', async (payload) => {
+        try {
+            if (!payload || !Array.isArray(payload.photos) || payload.photos.length < 4 || payload.photos.length > 8) {
+                throw new Error('Custom Strip requires between 4 and 8 pictures.');
+            }
+            const frameName = typeof payload.frame === 'string' ? payload.frame : appConfig.activeFrame;
+            if (!frameName || frameName !== path.basename(frameName) || !listFrames().some(frame => frame.name === frameName)) {
+                throw new Error('Select a valid frame before creating the strip.');
+            }
+
+            const photos = payload.photos.map(decodeImagePayload);
+            const filename = `collage_custom_${Date.now()}.jpg`;
+            await createCustomCollage(photos, path.join(masterFolder, filename), path.join(framesFolder, frameName));
+            addLog(`> Custom Strip saved: ${filename}`);
+            socket.emit('custom_strip_saved', { filename });
+        } catch (error) {
+            socket.emit('archive_error', error.message);
+        }
+    });
+
     socket.on('session_complete', () => { evaluateLEDState(); });
     socket.on('clear_terminal', () => {
         terminalHistory = ['> Terminal cleared by operator.'];
@@ -820,6 +855,7 @@ function waitForFile(filePath, timeoutMs = 5000) {
                 clearInterval(timer);
                 setTimeout(() => resolve(true), 200); 
             }
+
             elapsed += checkInterval;
             if (elapsed >= timeoutMs) {
                 clearInterval(timer);
@@ -829,13 +865,44 @@ function waitForFile(filePath, timeoutMs = 5000) {
     });
 }
 
+function decodeImagePayload(payload) {
+    if (typeof payload !== 'string' || !/^data:image\/(?:jpeg|jpg|png|webp);base64,/i.test(payload)) {
+        throw new Error('Only JPG, PNG, and WebP images are supported.');
+    }
+    const buffer = Buffer.from(payload.replace(/^data:image\/(?:jpeg|jpg|png|webp);base64,/i, ''), 'base64');
+    if (!buffer.length || buffer.length > 5 * 1024 * 1024) {
+        throw new Error('Each image must be between 1 byte and 5 MB.');
+    }
+    return buffer;
+}
+
+async function createCustomCollage(photos, outputPath, framePath) {
+    const photoWidth = 513;
+    const photoHeight = 389;
+    const slotPositions = [
+        [57, 144], [628, 144], [57, 545], [628, 545],
+        [57, 947], [628, 947], [57, 1349], [628, 1349]
+    ];
+    const slotPhotos = photos.length === 4
+        ? [photos[0], photos[0], photos[1], photos[1], photos[2], photos[2], photos[3], photos[3]]
+        : photos;
+    const photoLayers = await Promise.all(slotPhotos.map(async (photo, index) => ({
+        input: await sharp(photo).resize(photoWidth, photoHeight, { fit: 'fill' }).jpeg().toBuffer(),
+        left: slotPositions[index][0],
+        top: slotPositions[index][1]
+    })));
+    const background = await sharp(framePath).resize(1200, 1800, { fit: 'fill' }).png().toBuffer();
+    await sharp(background).composite(photoLayers).jpeg({ quality: 90 }).toFile(outputPath);
+}
+
 async function createCollage(photos, outputPath, filterConfig) {
     try {
-        const photoWidth = 560;
-        const photoHeight = 401;
-        const leftX = 21;
-        const rightX = 619;
-        const rowY = [144, 557, 971, 1385];
+        // These coordinates match the eight photo slots in the 1200x1800 frames.
+        const photoWidth = 513;
+        const photoHeight = 389;
+        const leftX = 57;
+        const rightX = 628;
+        const rowY = [144, 545, 947, 1349];
         const resizedImages = await Promise.all(
             photos.map(async (photoPath) => {
                 await waitForFile(photoPath);

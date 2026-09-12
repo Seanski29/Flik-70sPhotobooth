@@ -6,6 +6,39 @@
     <title>FLIK | Archive</title>
     <link rel="stylesheet" href="../css/style.css">
     <script src="http://localhost:3001/socket.io/socket.io.js"></script>
+    <style>
+        .archive-actions { display: flex; gap: 8px; }
+        .archive-actions button { padding: 10px 16px; color: #fff; border: 0; border-radius: 6px; cursor: pointer; font-weight: 700; }
+        .archive-upload { background: #16a34a; }
+        .custom-strip-button { background: #7c3aed; }
+        .custom-strip-box { width: min(760px, calc(100vw - 32px)); max-height: calc(100vh - 40px); overflow-y: auto; padding: 24px; color: #fff; background: #1e1e1e; border: 1px solid #555; border-radius: 10px; }
+        .custom-strip-box h2 { margin: 0 0 8px; }
+        .custom-strip-box p { margin: 0 0 16px; color: #bbb; }
+        .custom-strip-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 16px; }
+        .custom-strip-controls label { font-weight: 700; }
+        .custom-strip-controls select, .custom-strip-controls button { padding: 8px; color: #fff; background: #333; border: 1px solid #666; border-radius: 5px; }
+        .custom-strip-controls button { cursor: pointer; }
+        .custom-strip-previews { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; min-height: 120px; margin-bottom: 18px; }
+        .custom-strip-photo { position: relative; padding: 5px; background: #333; border: 2px solid #555; border-radius: 6px; cursor: grab; }
+        .custom-strip-photo img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 3px; }
+        .custom-strip-photo span { display: block; padding-top: 4px; color: #ddd; font-size: 12px; text-align: center; }
+        .custom-strip-photo button { position: absolute; top: 7px; right: 7px; width: 24px; height: 24px; color: #fff; background: #b91c1c; border: 0; border-radius: 50%; cursor: pointer; }
+        .custom-strip-empty { grid-column: 1 / -1; padding: 35px; color: #aaa; text-align: center; border: 1px dashed #555; border-radius: 6px; }
+        .custom-strip-footer { display: flex; justify-content: flex-end; gap: 8px; }
+        .custom-strip-footer button { padding: 10px 16px; border: 0; border-radius: 5px; color: #fff; cursor: pointer; font-weight: 700; }
+        .custom-strip-cancel { background: #555; }
+        .custom-strip-save { background: #16a34a; }
+        .crop-editor-box { width: min(900px, calc(100vw - 32px)); padding: 22px; color: #fff; background: #1e1e1e; border: 1px solid #555; border-radius: 10px; }
+        .crop-editor-box h2 { margin: 0 0 6px; }
+        .crop-editor-box p { margin: 0 0 14px; color: #bbb; }
+        #cropCanvas { display: block; width: 100%; max-height: 62vh; object-fit: contain; background: #090909; border: 1px solid #555; cursor: grab; }
+        #cropCanvas:active { cursor: grabbing; }
+        .crop-editor-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+        .crop-editor-footer button { padding: 9px 15px; border: 0; border-radius: 5px; color: #fff; cursor: pointer; font-weight: 700; }
+        .crop-reset { background: #555; }
+        .crop-save { background: #16a34a; }
+        @media (max-width: 650px) { .custom-strip-previews { grid-template-columns: repeat(2, minmax(0, 1fr)); } .archive-actions { flex-wrap: wrap; } }
+    </style>
 </head>
 <body class="app-layout">
 
@@ -41,6 +74,39 @@
                 <button class="btn-modal btn-confirm-delete" onclick="executeDelete()">Yes, Delete It</button>
             </div>
         </div>
+
+    </div>
+
+    <div id="customStripModal" class="modal-overlay">
+        <div class="custom-strip-box">
+            <h2>Custom Strip</h2>
+            <p>Upload 4 to 8 pictures, then drag them into the order they should appear in the frame.</p>
+            <div class="custom-strip-controls">
+                <input id="customStripInput" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden>
+                <button type="button" onclick="document.getElementById('customStripInput').click()">Choose Pictures</button>
+                <label for="customFrameSelect">Frame</label>
+                <select id="customFrameSelect"></select>
+            </div>
+
+            <div id="cropEditorModal" class="modal-overlay">
+                <div class="crop-editor-box">
+                    <h2>Crop Picture</h2>
+                    <p>Move the fixed crop window up, down, left, or right to choose the picture area. Drag inside the window or use the arrow keys.</p>
+                    <canvas id="cropCanvas" tabindex="0" aria-label="Crop window. Use arrow keys to move the crop."></canvas>
+                    <div class="crop-editor-footer">
+                        <button class="crop-reset" type="button" onclick="resetCropSelection()">Reset Crop</button>
+                        <button class="crop-save" type="button" onclick="saveCrop()">Use Crop</button>
+                    </div>
+                </div>
+            </div>
+            <div id="customStripPreviews" class="custom-strip-previews">
+                <div class="custom-strip-empty">Choose 4 to 8 pictures to begin.</div>
+            </div>
+            <div class="custom-strip-footer">
+                <button class="custom-strip-cancel" type="button" onclick="closeCustomStrip()">Cancel</button>
+                <button class="custom-strip-save" type="button" onclick="saveCustomStrip()">Save to Archive</button>
+            </div>
+        </div>
     </div>
 
     <main class="workspace">
@@ -49,9 +115,12 @@
                 <h2 class="page-title">ARCHIVE</h2>
                 <p class="page-subtitle">Event Session History</p>
             </div>
-            <button onclick="loadGallery()" style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                Refresh Grid
-            </button>
+            <div class="archive-actions">
+                <input id="archiveUploadInput" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+                <button class="archive-upload" type="button" onclick="document.getElementById('archiveUploadInput').click()">Upload Picture</button>
+                <button class="custom-strip-button" type="button" onclick="openCustomStrip()">Custom Strip</button>
+                <button type="button" onclick="loadGallery()" style="background: #3b82f6;">Refresh Grid</button>
+            </div>
         </header>
 
         <div class="gallery-container" id="galleryGrid"></div>
@@ -62,6 +131,36 @@
     <script>
         const socket = io('http://localhost:3001');
         let fileToDelete = null;
+        let customPhotos = [];
+        let draggedPhotoIndex = null;
+        let cropPhotoIndex = -1;
+        let cropImage = null;
+        let cropDisplay = null;
+        let cropDragStart = null;
+        const cropAspect = 513 / 389;
+
+        socket.on('connect', () => socket.emit('request_frames'));
+        socket.on('frame_list', frames => {
+            const select = document.getElementById('customFrameSelect');
+            select.innerHTML = '';
+            frames.forEach(frame => {
+                const option = document.createElement('option');
+                option.value = frame.name;
+                option.textContent = frame.name;
+                select.appendChild(option);
+            });
+        });
+        socket.on('frame_config', ({ active }) => {
+            const select = document.getElementById('customFrameSelect');
+            if (active) select.value = active;
+        });
+        socket.on('archive_photo_saved', loadGallery);
+        socket.on('custom_strip_saved', () => {
+            closeCustomStrip();
+            loadGallery();
+            alert('Custom Strip saved to the archive.');
+        });
+        socket.on('archive_error', message => alert(message));
 
         async function loadGallery() {
             const grid = document.getElementById('galleryGrid');
@@ -107,6 +206,243 @@
             if(confirm("Send this collage to the printer?")) {
                 socket.emit('print_photo', filename);
             }
+        }
+
+        document.getElementById('archiveUploadInput').addEventListener('change', async event => {
+            const file = event.target.files[0];
+            event.target.value = '';
+            if (!file) return;
+            try {
+                socket.emit('upload_archive_photo', await imageToDataUrl(file));
+            } catch (error) {
+                alert(error.message);
+            }
+        });
+
+        function openCustomStrip() {
+            customPhotos = [];
+            renderCustomPhotos();
+            socket.emit('request_frames');
+            document.getElementById('customStripModal').style.display = 'flex';
+        }
+
+        function closeCustomStrip() {
+            document.getElementById('customStripModal').style.display = 'none';
+            customPhotos = [];
+        }
+
+        document.getElementById('customStripInput').addEventListener('change', async event => {
+            const files = Array.from(event.target.files);
+            event.target.value = '';
+            if (files.length < 4 || files.length > 8) {
+                alert('Choose between 4 and 8 pictures.');
+                return;
+            }
+            try {
+                customPhotos = await Promise.all(files.map(imageToDataUrl));
+                renderCustomPhotos();
+            } catch (error) {
+                alert(error.message);
+            }
+        });
+
+        function imageToDataUrl(file) {
+            return new Promise((resolve, reject) => {
+                if (!file.type.match(/^image\/(jpeg|png|webp)$/)) {
+                    reject(new Error('Only JPG, PNG, and WebP images are supported.'));
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const image = new Image();
+                    image.onload = () => {
+                        const scale = Math.min(1, 1200 / image.width, 900 / image.height);
+                        const canvas = document.createElement('canvas');
+                        canvas.width = Math.max(1, Math.round(image.width * scale));
+                        canvas.height = Math.max(1, Math.round(image.height * scale));
+                        canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+                        resolve(canvas.toDataURL('image/jpeg', 0.82));
+                    };
+                    image.onerror = () => reject(new Error(`Unable to read ${file.name}.`));
+                    image.src = reader.result;
+                };
+                reader.onerror = () => reject(new Error(`Unable to read ${file.name}.`));
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function renderCustomPhotos() {
+            const container = document.getElementById('customStripPreviews');
+            container.innerHTML = '';
+            if (!customPhotos.length) {
+                container.innerHTML = '<div class="custom-strip-empty">Choose 4 to 8 pictures to begin.</div>';
+                return;
+            }
+            customPhotos.forEach((photo, index) => {
+                const card = document.createElement('div');
+                card.className = 'custom-strip-photo';
+                card.draggable = true;
+                card.innerHTML = `<img src="${photo}" alt="Custom picture ${index + 1}"><span>Slot ${index + 1}</span><button type="button" aria-label="Remove picture">×</button>`;
+                card.addEventListener('click', () => openCropEditor(index));
+                card.addEventListener('dragstart', () => { draggedPhotoIndex = index; });
+                card.addEventListener('dragover', event => event.preventDefault());
+                card.addEventListener('drop', event => {
+                    event.preventDefault();
+                    if (draggedPhotoIndex === null || draggedPhotoIndex === index) return;
+                    const [photoToMove] = customPhotos.splice(draggedPhotoIndex, 1);
+                    customPhotos.splice(index, 0, photoToMove);
+                    draggedPhotoIndex = null;
+                    renderCustomPhotos();
+                });
+                card.querySelector('button').addEventListener('click', event => {
+                    event.stopPropagation();
+                    customPhotos.splice(index, 1);
+                    renderCustomPhotos();
+                });
+                container.appendChild(card);
+            });
+        }
+
+        function saveCustomStrip() {
+            if (customPhotos.length < 4 || customPhotos.length > 8) {
+                alert('Custom Strip requires between 4 and 8 pictures.');
+                return;
+            }
+            socket.emit('create_custom_strip', {
+                photos: customPhotos,
+                frame: document.getElementById('customFrameSelect').value
+            });
+        }
+
+        function openCropEditor(index) {
+            cropPhotoIndex = index;
+            cropImage = new Image();
+            cropImage.onload = () => {
+                const canvas = document.getElementById('cropCanvas');
+                const maxWidth = Math.min(860, window.innerWidth - 80);
+                const scale = Math.min(1, maxWidth / cropImage.naturalWidth, 520 / cropImage.naturalHeight);
+                canvas.width = Math.max(1, Math.round(cropImage.naturalWidth * scale));
+                canvas.height = Math.max(1, Math.round(cropImage.naturalHeight * scale));
+                cropDisplay = { scale, x: 0, y: 0, width: canvas.width, height: canvas.height, selection: null };
+                resetCropSelection();
+                document.getElementById('cropEditorModal').style.display = 'flex';
+                canvas.focus();
+            };
+            cropImage.src = customPhotos[index];
+        }
+
+        function resetCropSelection() {
+            if (!cropDisplay) return;
+            const width = Math.min(cropDisplay.width, cropDisplay.height * cropAspect);
+            const height = width / cropAspect;
+            cropDisplay.selection = {
+                x: (cropDisplay.width - width) / 2,
+                y: (cropDisplay.height - height) / 2,
+                width,
+                height
+            };
+            drawCropEditor();
+        }
+
+        function drawCropEditor() {
+            const canvas = document.getElementById('cropCanvas');
+            const context = canvas.getContext('2d');
+            const selection = cropDisplay.selection;
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            context.drawImage(cropImage, 0, 0, canvas.width, canvas.height);
+            context.fillStyle = 'rgba(0, 0, 0, .55)';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            context.clearRect(selection.x, selection.y, selection.width, selection.height);
+            context.drawImage(cropImage, selection.x / cropDisplay.scale, selection.y / cropDisplay.scale, selection.width / cropDisplay.scale, selection.height / cropDisplay.scale, selection.x, selection.y, selection.width, selection.height);
+            context.strokeStyle = '#4ade80';
+            context.lineWidth = 3;
+            context.strokeRect(selection.x, selection.y, selection.width, selection.height);
+        }
+
+        document.getElementById('cropCanvas').addEventListener('mousedown', event => {
+            if (!cropDisplay) return;
+            const point = getCropPoint(event);
+            const selection = cropDisplay.selection;
+            if (point.x < selection.x || point.x > selection.x + selection.width ||
+                point.y < selection.y || point.y > selection.y + selection.height) {
+                return;
+            }
+            cropDragStart = { x: point.x, y: point.y, selectionX: selection.x, selectionY: selection.y };
+        });
+        document.getElementById('cropCanvas').addEventListener('mousemove', event => {
+            if (!cropDragStart || !cropDisplay) return;
+            const point = getCropPoint(event);
+            cropDisplay.selection.x = Math.max(
+                0,
+                Math.min(
+                    cropDisplay.width - cropDisplay.selection.width,
+                    cropDragStart.selectionX + point.x - cropDragStart.x
+                )
+            );
+            cropDisplay.selection.y = Math.max(
+                0,
+                Math.min(
+                    cropDisplay.height - cropDisplay.selection.height,
+                    cropDragStart.selectionY + point.y - cropDragStart.y
+                )
+            );
+            drawCropEditor();
+        });
+        document.getElementById('cropCanvas').addEventListener('mouseup', () => { cropDragStart = null; });
+        document.getElementById('cropCanvas').addEventListener('mouseleave', () => { cropDragStart = null; });
+        document.getElementById('cropCanvas').addEventListener('keydown', event => {
+            if (!cropDisplay) return;
+            const distance = event.shiftKey ? 20 : 5;
+            const movements = {
+                ArrowLeft: [-distance, 0],
+                ArrowRight: [distance, 0],
+                ArrowUp: [0, -distance],
+                ArrowDown: [0, distance]
+            };
+            const movement = movements[event.key];
+            if (!movement) return;
+            event.preventDefault();
+            cropDisplay.selection.x = Math.max(0, Math.min(
+                cropDisplay.width - cropDisplay.selection.width,
+                cropDisplay.selection.x + movement[0]
+            ));
+            cropDisplay.selection.y = Math.max(0, Math.min(
+                cropDisplay.height - cropDisplay.selection.height,
+                cropDisplay.selection.y + movement[1]
+            ));
+            drawCropEditor();
+        });
+
+        function getCropPoint(event) {
+            const canvas = document.getElementById('cropCanvas');
+            const bounds = canvas.getBoundingClientRect();
+            return {
+                x: Math.max(0, Math.min(canvas.width, (event.clientX - bounds.left) * canvas.width / bounds.width)),
+                y: Math.max(0, Math.min(canvas.height, (event.clientY - bounds.top) * canvas.height / bounds.height))
+            };
+        }
+
+        function saveCrop() {
+            if (!cropDisplay || cropPhotoIndex < 0) return;
+            const selection = cropDisplay.selection;
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.round(selection.width / cropDisplay.scale);
+            canvas.height = Math.round(selection.height / cropDisplay.scale);
+            canvas.getContext('2d').drawImage(
+                cropImage,
+                selection.x / cropDisplay.scale,
+                selection.y / cropDisplay.scale,
+                canvas.width,
+                canvas.height,
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+            customPhotos[cropPhotoIndex] = canvas.toDataURL('image/jpeg', 0.9);
+            document.getElementById('cropEditorModal').style.display = 'none';
+            cropDisplay = null;
+            renderCustomPhotos();
         }
         // Function to request deletion of a photo
         function requestDelete(filename) {

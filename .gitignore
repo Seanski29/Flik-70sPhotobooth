@@ -1,3 +1,5 @@
 node_modules/
 dist/
-.env
+archive/*.jpg
+assets/current_frame.png
+stats.json

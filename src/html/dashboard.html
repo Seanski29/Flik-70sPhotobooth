@@ -49,6 +49,11 @@
             .visual-row { grid-template-columns: minmax(0, 1.2fr) minmax(105px, .75fr); }
             .active-frame-card img { height: 125px; }
         }
+        @media (min-width: 1201px) and (max-height: 800px) {
+            .dashboard-container { height: calc(100vh - 98px); gap: 8px; }
+            .right-column { grid-template-rows: 175px auto minmax(0, 1fr); gap: 8px; }
+            .active-frame-card img { height: 115px; }
+        }
 
         /* Slider */
         input[type=range] { appearance: none; -webkit-appearance: none; width: 100%; background: transparent; margin-top: 5px; }
@@ -332,7 +337,7 @@
         }
 
         function closePrinterSettings() {
-            printerModal.style.display = 'none';
+            printerModal.style.display = 'none'; //OKAYY
         }
 
         function savePrinterSettings() {
