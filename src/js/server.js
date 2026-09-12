@@ -19,10 +19,21 @@ const PORT = 3001;
 app.use(cors());
 app.use(express.json({ limit: '20mb' }));
 
-const masterFolder = path.join(__dirname, '..', 'archive');
-const framesFolder = path.join(__dirname, '..', '..', 'assets', 'frames');
+const projectRoot = path.join(__dirname, '..', '..');
+const bundledArchiveFolder = path.join(__dirname, '..', 'archive');
+const bundledFramesFolder = path.join(projectRoot, 'assets', 'frames');
+const dataRoot = process.env.FLIK_DATA_DIR
+    ? path.resolve(process.env.FLIK_DATA_DIR)
+    : path.join(__dirname, '..');
+const masterFolder = path.join(dataRoot, 'archive');
+const framesFolder = process.env.FLIK_DATA_DIR
+    ? path.join(dataRoot, 'frames')
+    : bundledFramesFolder;
+const persistentConfigFolder = process.env.FLIK_DATA_DIR ? dataRoot : __dirname;
 app.use('/archive', express.static(masterFolder)); 
+app.use('/archive', express.static(bundledArchiveFolder));
 app.use('/frames', express.static(framesFolder));
+app.use('/frames', express.static(bundledFramesFolder));
 
 if (!fs.existsSync(masterFolder)) fs.mkdirSync(masterFolder, { recursive: true });
 if (!fs.existsSync(framesFolder)) fs.mkdirSync(framesFolder, { recursive: true });
@@ -46,8 +57,8 @@ function normalizeSessionPrice(value) {
 }
 
 // --- PERSISTENT DATABASE SYSTEM ---
-const statsFilePath = path.join(__dirname, 'stats.json');
-const configFilePath = path.join(__dirname, 'config.json');
+const statsFilePath = path.join(persistentConfigFolder, 'stats.json');
+const configFilePath = path.join(persistentConfigFolder, 'config.json');
 let totalRevenue = 0;
 let totalSessions = 0;
 let dailyRecords = [];
@@ -395,7 +406,7 @@ function capturePhoto() {
                                 
                 try {
                     await createCollage(currentSessionPhotos, collagePath, lockedSessionFilterConfig);
-                    const imageUrl = `http://localhost:3001/archive/${collageName}`;
+                    const imageUrl = `http://127.0.0.1:${PORT}/archive/${encodeURIComponent(collageName)}`;
                     recordCompletedSession();
                     
                     io.emit('collage_ready', imageUrl);
@@ -413,7 +424,7 @@ function capturePhoto() {
                     sessionInProgress = false; 
                     evaluateLEDState(); 
                 }
-            }, 3000); 
+            }, 0);
         }
     });
 }
@@ -784,7 +795,7 @@ io.on('connection', (socket) => {
 
             const photos = await Promise.all(payload.photos.map(decodeImagePayload));
             const filename = `collage_custom_${Date.now()}.jpg`;
-            await createCustomCollage(photos, path.join(masterFolder, filename), path.join(framesFolder, frameName));
+            await createCustomCollage(photos, path.join(masterFolder, filename), resolveFramePath(frameName));
             addLog(`> Custom Strip saved: ${filename}`);
             socket.emit('custom_strip_saved', { filename });
         } catch (error) {
@@ -863,12 +874,10 @@ io.on('connection', (socket) => {
 
 app.get('/api/gallery', (req, res) => {
     try {
-        const files = fs.readdirSync(masterFolder)
-            .filter(file => file.startsWith('collage_') && file.endsWith('.jpg'))
+        const files = listArchiveFiles()
             .map(file => {
-                const filePath = path.join(masterFolder, file);
-                const stats = fs.statSync(filePath);
-                return { name: file, url: `http://localhost:3001/archive/${file}`, timestamp: stats.mtime.getTime() };
+                const filePath = file.path;
+                return { name: file.name, url: `http://127.0.0.1:${PORT}/archive/${encodeURIComponent(file.name)}`, timestamp: file.mtime };
             })
             .sort((a, b) => b.timestamp - a.timestamp); 
         res.json(files);
@@ -994,9 +1003,9 @@ async function createCollage(photos, outputPath, filterConfig) {
             })
         );
         
-        const backgroundInput = appConfig.activeFrame &&
-            fs.existsSync(path.join(framesFolder, appConfig.activeFrame))
-            ? await sharp(path.join(framesFolder, appConfig.activeFrame))
+        const activeFramePath = appConfig.activeFrame ? resolveFramePath(appConfig.activeFrame) : '';
+        const backgroundInput = activeFramePath
+            ? await sharp(activeFramePath)
                 .resize(1200, 1800, { fit: 'fill' }).png().toBuffer()
             : { create: { width: 1200, height: 1800, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 1 } } };
         const photoLayers = [];
@@ -1013,10 +1022,46 @@ async function createCollage(photos, outputPath, filterConfig) {
 }
 
 function listFrames() {
-    return fs.readdirSync(framesFolder)
-        .filter(name => /\.(jpe?g|png|webp)$/i.test(name))
-        .sort((a, b) => a.localeCompare(b))
-        .map(name => ({ name, url: `http://localhost:${PORT}/frames/${encodeURIComponent(name)}` }));
+    const names = new Set();
+    [framesFolder, bundledFramesFolder].forEach(folder => {
+        if (!fs.existsSync(folder)) return;
+        fs.readdirSync(folder)
+            .filter(name => /\.(jpe?g|png|webp)$/i.test(name))
+            .forEach(name => names.add(name));
+    });
+    return [...names].sort((a, b) => a.localeCompare(b))
+        .map(name => ({ name, url: `http://127.0.0.1:${PORT}/frames/${encodeURIComponent(name)}` }));
+}
+
+function resolveFramePath(filename) {
+    if (typeof filename !== 'string' || filename !== path.basename(filename)) return '';
+    const writablePath = path.join(framesFolder, filename);
+    if (fs.existsSync(writablePath)) return writablePath;
+    const bundledPath = path.join(bundledFramesFolder, filename);
+    return fs.existsSync(bundledPath) ? bundledPath : '';
+}
+
+function listArchiveFiles() {
+    const files = new Map();
+    [masterFolder, bundledArchiveFolder].forEach(folder => {
+        if (!fs.existsSync(folder)) return;
+        fs.readdirSync(folder)
+            .filter(name => /^collage_.*\.jpg$/i.test(name))
+            .forEach(name => {
+                const filePath = path.join(folder, name);
+                const stats = fs.statSync(filePath);
+                files.set(name, { name, path: filePath, mtime: stats.mtime.getTime() });
+            });
+    });
+    return [...files.values()];
+}
+
+function resolveArchivePath(filename) {
+    if (typeof filename !== 'string' || filename !== path.basename(filename)) return '';
+    const writablePath = path.join(masterFolder, filename);
+    if (fs.existsSync(writablePath)) return writablePath;
+    const bundledPath = path.join(bundledArchiveFolder, filename);
+    return fs.existsSync(bundledPath) ? bundledPath : '';
 }
 
 server.listen(PORT, () => console.log(` FLIK Master Backend running on port ${PORT}`));
