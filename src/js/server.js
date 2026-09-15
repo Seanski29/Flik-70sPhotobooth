@@ -568,7 +568,12 @@ async function connectToHardware() {
 
             if (cleanData.startsWith('FILTER:')) {
                 const incomingFilter = cleanData.replace('FILTER:', '').trim();
-                emitSoundEffect('switch');
+                const filterSound = {
+                    NORMAL: 'normal',
+                    NOIR: 'noir',
+                    FILM_II: 'sepia'
+                }[incomingFilter];
+                if (filterSound) emitSoundEffect(filterSound);
                 if (!sessionInProgress) {
                     if (incomingFilter !== 'NORMAL') {
                         clearTimeout(normalDebounce);

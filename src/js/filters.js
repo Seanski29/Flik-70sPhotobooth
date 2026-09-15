@@ -1,10 +1,12 @@
 const filterSocket = io('http://localhost:3001');
 const filterSoundSources = {
-    bill: '../../assets/bill.m4a',
+    bill: '../../assets/bill.mp3',
     green: '../../assets/green.mp3',
     red: '../../assets/red.mp3',
-    switch: '../../assets/switch.mp3',
-    arcade: '../../assets/arcade.mp3'
+    arcade: '../../assets/arcade.mp3',
+    normal: '../../assets/normal.mp3',
+    noir: '../../assets/noir.mp3',
+    sepia: '../../assets/sepia.mp3'
 };
 const filterSounds = Object.fromEntries(
     Object.entries(filterSoundSources).map(([name, source]) => [name, new Audio(source)])
