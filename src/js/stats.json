@@ -9,6 +9,11 @@
       "date": "12/09/2026",
       "revenue": 100,
       "sessions": 2
+    },
+    {
+      "date": "16/09/2026",
+      "revenue": 100,
+      "sessions": 2
     }
   ]
 }
