@@ -302,6 +302,14 @@
                                 <input type="range" id="timerSlider" min="3" max="10" value="10">
                             </div>
                         </div>
+                        <div class="settings-row">
+                            <label for="ledColorPicker">LED Color</label>
+                            <input type="color" id="ledColorPicker" value="#ffdc8c" aria-label="LED strip color">
+                            <div class="slider-box" style="flex: 1;">
+                                <label for="ledDimSlider">Session LED Brightness: <span id="ledDimLabel" style="color:#ef4444; font-weight: bold;">40</span></label>
+                                <input type="range" id="ledDimSlider" min="0" max="255" value="40">
+                            </div>
+                        </div>
                         <button class="btn-op" style="background: #444; margin-top: 8px;" type="button" onclick="toggleFullscreen()">Toggle Full Screen</button>
                     </div>
 
@@ -350,6 +358,9 @@
         const printerDisplay = document.getElementById('printerDisplay');
         const dashboardFramePreview = document.getElementById('dashboardFramePreview');
         const freePlayButton = document.getElementById('btnFreePlay');
+        const ledColorPicker = document.getElementById('ledColorPicker');
+        const ledDimSlider = document.getElementById('ledDimSlider');
+        const ledDimLabel = document.getElementById('ledDimLabel');
         
         let isFreePlayEnabled = false;
         let sessionPrice = 200;
@@ -363,6 +374,7 @@
         // AUDIO SETUP
         const countdownAudio = new Audio('../../assets/10_sc.mp3');
         const bgAudio = new Audio('../../assets/bg_music.mp3');
+        const printerSfxAudio = new Audio('../../assets/Analog Photobooth Mechanical SFX.MP3');
         const soundEffects = {
             bill: '../../assets/bill.mp3',
             green: '../../assets/green.mp3',
@@ -383,7 +395,7 @@
 
         document.body.addEventListener('click', () => {
             if (!audioUnlocked) {
-                const unlockAudio = [countdownAudio, bgAudio, ...Object.values(soundEffectAudio)];
+                const unlockAudio = [countdownAudio, bgAudio, printerSfxAudio, ...Object.values(soundEffectAudio)];
                 Promise.all(unlockAudio.map(audio => audio.play().then(() => {
                     audio.pause();
                     audio.currentTime = 0;
@@ -402,6 +414,11 @@
         }
 
         socket.on('sound_effect', playSoundEffect);
+
+        socket.on('play_printer_sfx', () => {
+            printerSfxAudio.currentTime = 0;
+            printerSfxAudio.play().catch(() => {});
+        });
 
         countdownAudio.onended = () => { document.getElementById('btnTestAudio').innerHTML = "Test Count Audio"; };
 
@@ -583,6 +600,39 @@
             timerSlider.value = val;
             timerLabel.innerText = val + 's';
         });
+
+        function hexToRgb(hex) {
+            const match = /^#([0-9a-f]{6})$/i.exec(hex);
+            if (!match) return null;
+            const value = parseInt(match[1], 16);
+            return {
+                r: (value >> 16) & 255,
+                g: (value >> 8) & 255,
+                b: value & 255
+            };
+        }
+
+        ledColorPicker.addEventListener('input', (event) => {
+            const rgb = hexToRgb(event.target.value);
+            if (rgb) socket.emit('set_led_color', rgb);
+        });
+
+        ledDimSlider.addEventListener('input', (event) => {
+            ledDimLabel.innerText = event.target.value;
+            socket.emit('set_led_dimness', event.target.value);
+        });
+
+        socket.on('led_config', (config) => {
+            if (typeof config.color === 'string' && /^#[0-9a-f]{6}$/i.test(config.color)) {
+                ledColorPicker.value = config.color;
+            }
+            if (Number.isInteger(config.dimness) && config.dimness >= 0 && config.dimness <= 255) {
+                ledDimSlider.value = config.dimness;
+                ledDimLabel.innerText = config.dimness;
+            }
+        });
+
+        socket.on('led_error', (message) => appendLog(`ERROR: ${message}`));
         
         socket.on('countdown_tick', (second) => {
             let maxAudioSec = Math.min(timerSlider.value, 10); 

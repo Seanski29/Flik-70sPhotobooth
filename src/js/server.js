@@ -192,6 +192,8 @@ let billSoundCooldownUntil = 0;
 let systemRedState = null;
 let arcadeRedState = null;
 let greenLedState = null;
+let ledColor = { r: 255, g: 220, b: 140 };
+let ledDimness = 40;
 
 function formatDate(date) {
     const day = String(date.getDate()).padStart(2, '0');
@@ -288,6 +290,7 @@ function sendHardwareCommand(command) {
             systemRedState = nextSystemRedState;
             emitSoundEffect('red');
         }
+
         if (arcadeRedState !== false) arcadeRedState = false;
     } else if (command === 'READY_TO_START') {
         if (arcadeRedState !== true) {
@@ -304,6 +307,14 @@ function sendHardwareCommand(command) {
             greenLedState = nextGreenState;
             if (nextGreenState) emitSoundEffect('green');
         }
+    }
+
+    function sendLedColor(color) {
+        sendHardwareCommand(`SET_COLOR:${color.r},${color.g},${color.b}`);
+    }
+
+    function sendLedDimness(dimness) {
+        sendHardwareCommand(`SET_DIM:${dimness}`);
     }
 }
 
@@ -345,6 +356,7 @@ $image.Dispose()
 $document.Dispose()
 `;
 
+    io.emit('play_printer_sfx');
     execFile('powershell.exe', [
         '-NoProfile',
         '-NonInteractive',
@@ -552,6 +564,8 @@ async function connectToHardware() {
             } else {
                 arduinoConnected = true;
                 addLog(`>  System linked to Arduino on ${targetPort.path}`);
+                sendLedColor(ledColor);
+                sendLedDimness(ledDimness);
                 
                 port.set({ dtr: false }, () => {
                     setTimeout(() => port.set({ dtr: true }), 50);
@@ -656,6 +670,10 @@ io.on('connection', (socket) => {
         socket.emit('frame_config', { active: appConfig.activeFrame });
         socket.emit('filter_config', appConfig.filters);
         socket.emit('free_play_state', isFreePlayMode);
+        socket.emit('led_config', {
+            color: `#${ledColor.r.toString(16).padStart(2, '0')}${ledColor.g.toString(16).padStart(2, '0')}${ledColor.b.toString(16).padStart(2, '0')}`,
+            dimness: ledDimness
+        });
         socket.emit(
             'bg_music_command',
             !isFreePlayMode && availableBalance >= appConfig.sessionPrice ? 'PLAY' : 'STOP'
@@ -841,6 +859,40 @@ io.on('connection', (socket) => {
         countdownTimerStart = parseInt(val);
         addLog(`>  TIMER UPDATED: Countdown set to ${countdownTimerStart} seconds.`);
         io.emit('sync_timer', countdownTimerStart);
+    });
+
+    socket.on('set_led_color', (color) => {
+        if (!color || typeof color !== 'object') {
+            socket.emit('led_error', 'Invalid LED color.');
+            return;
+        }
+        const channels = ['r', 'g', 'b'].map(channel => Number(color[channel]));
+        if (channels.some(channel => !Number.isInteger(channel) || channel < 0 || channel > 255)) {
+            socket.emit('led_error', 'LED color channels must be integers from 0 to 255.');
+            return;
+        }
+        ledColor = { r: channels[0], g: channels[1], b: channels[2] };
+        sendLedColor(ledColor);
+        io.emit('led_config', {
+            color: `#${channels.map(channel => channel.toString(16).padStart(2, '0')).join('')}`,
+            dimness: ledDimness
+        });
+        addLog(`> LED color updated to RGB(${channels.join(', ')}).`);
+    });
+
+    socket.on('set_led_dimness', (value) => {
+        const nextDimness = Number(value);
+        if (!Number.isInteger(nextDimness) || nextDimness < 0 || nextDimness > 255) {
+            socket.emit('led_error', 'LED dimness must be an integer from 0 to 255.');
+            return;
+        }
+        ledDimness = nextDimness;
+        sendLedDimness(ledDimness);
+        io.emit('led_config', {
+            color: `#${ledColor.r.toString(16).padStart(2, '0')}${ledColor.g.toString(16).padStart(2, '0')}${ledColor.b.toString(16).padStart(2, '0')}`,
+            dimness: ledDimness
+        });
+        addLog(`> LED session brightness updated to ${ledDimness}.`);
     });
 
     socket.on('test_led', (cmd) => {
