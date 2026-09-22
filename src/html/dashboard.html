@@ -347,9 +347,15 @@
                         <div class="btn-grid">
                             <button id="btnTestSysRed" class="btn-test" style="background: #991b1b;" onclick="toggleSysRedLED()">Sys Red: ON</button>
                             <button id="btnTestArcRed" class="btn-test" style="background: #7f1d1d;" onclick="toggleArcadeRedLED()">Arcade Red: OFF</button>
+                            
                             <button id="btnTestGreen" class="btn-test span-2" style="background: #14532d;" onclick="toggleGreenLED()">Printer Green LED: OFF</button>
+                            <button id="btnLedStrip" class="btn-test span-2" style="background: #22c55e;" onclick="toggleLedStrip()">LED Strip: ON</button>
+                            
                             <button id="btnTestAudio" class="btn-test" style="background: #3b82f6;" onclick="toggleTestAudio()">Test Count Audio</button>
                             <button id="btnTestBGAudio" class="btn-test" style="background: #8b5cf6;" onclick="toggleBGAudio()">Test BG Music</button>
+                            
+                            <button id="btnTestPrinterSfx" class="btn-test span-2" style="background: #eab308; color: #000;" onclick="testPrinterSfx()">Test Printer SFX</button>
+                            <button class="btn-test span-2" style="background: #92400e;" onclick="restartLedStrip()">Restart LED Strip</button>
                         </div>
                     </div>
 
@@ -369,8 +375,10 @@
                             </div>
                         </div>
                         <div class="settings-row">
-                            <label for="ledColorPicker">LED Color</label>
-                            <input type="color" id="ledColorPicker" value="#ffdc8c" aria-label="LED strip color">
+                            <div style="display:flex; flex-direction:column; align-items:center; gap: 4px;">
+                                <label for="ledColorPicker" style="font-size: 11px; color:#aaa;">LED Color</label>
+                                <input type="color" id="ledColorPicker" value="#ffdc8c" aria-label="LED strip color">
+                            </div>
                             <div class="slider-box" style="flex: 1;">
                                 <label for="ledDimSlider">Session LED Brightness: <span id="ledDimLabel" style="color:#ef4444; font-weight: bold;">40</span></label>
                                 <input type="range" id="ledDimSlider" min="0" max="255" value="40">
@@ -485,6 +493,10 @@
             printerSfxAudio.currentTime = 0;
             printerSfxAudio.play().catch(() => {});
         });
+
+        function testPrinterSfx() {
+            socket.emit('test_printer_sfx');
+        }
 
         countdownAudio.onended = () => { document.getElementById('btnTestAudio').innerHTML = "Test Count Audio"; };
 
@@ -819,6 +831,23 @@
             }
         }
 
+        let isLedStripOn = true;
+        function toggleLedStrip() {
+            isLedStripOn = !isLedStripOn;
+            const button = document.getElementById('btnLedStrip');
+            socket.emit('test_led', isLedStripOn ? 'LED_STRIP_ON' : 'LED_STRIP_OFF');
+            button.style.background = isLedStripOn ? '#22c55e' : '#14532d';
+            button.innerText = `LED Strip: ${isLedStripOn ? 'ON' : 'OFF'}`;
+        }
+
+        function restartLedStrip() {
+            socket.emit('test_led', 'LED_STRIP_RESTART');
+            isLedStripOn = true;
+            const button = document.getElementById('btnLedStrip');
+            button.style.background = '#22c55e';
+            button.innerText = 'LED Strip: ON';
+        }
+
         document.getElementById('btnForceStart').addEventListener('click', () => {
             if (document.getElementById('sessionDisplay').innerText !== "CAMERA ACTIVE") { socket.emit('force_start'); }
         });
@@ -832,6 +861,8 @@
             document.getElementById('btnTestArcRed').style.background = '#7f1d1d'; document.getElementById('btnTestArcRed').innerText = 'Arcade Red: OFF';
             isGreenTestOn = false;
             document.getElementById('btnTestGreen').style.background = '#14532d'; document.getElementById('btnTestGreen').innerText = 'Printer Green LED: OFF';
+            isLedStripOn = true;
+            document.getElementById('btnLedStrip').style.background = '#22c55e'; document.getElementById('btnLedStrip').innerText = 'LED Strip: ON';
         });
 
         function triggerSystemRestart() {

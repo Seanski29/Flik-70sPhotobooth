@@ -27,6 +27,7 @@ volatile int totalPulses = 0;
 int currentBalance = 0;
 int lastReportedBalance = -1;
 bool isSessionActive = false;
+bool isStripEnabled = true;
 String lastFilter = "";
 
 void setup() {
@@ -104,6 +105,31 @@ void pulseInterrupt() {
   }
 }
 
+void refreshStrip() {
+  if (!isStripEnabled) return;
+
+  FastLED.setBrightness(isSessionActive ? dimmedBrightness : 200);
+  fill_solid(leds, NUM_LEDS, warmWhite);
+  FastLED.show();
+}
+
+void turnStripOn() {
+  isStripEnabled = true;
+  refreshStrip();
+}
+
+void turnStripOff() {
+  isStripEnabled = false;
+  fill_solid(leds, NUM_LEDS, CRGB::Black);
+  FastLED.show();
+}
+
+void restartStrip() {
+  turnStripOff();
+  delay(100);
+  turnStripOn();
+}
+
 // --- FRONT-END COMMUNICATION ---
 void serialEvent() {
   while (Serial.available()) {
@@ -115,35 +141,32 @@ void serialEvent() {
        // Not enough money
        digitalWrite(PIN_LED_RED_SYS, HIGH);  
        digitalWrite(PIN_LED_ARCADE, LOW);    
-       
-       FastLED.setBrightness(200); // Full bright
-       fill_solid(leds, NUM_LEDS, warmWhite);
-       FastLED.show();
-       
        isSessionActive = false;
+       refreshStrip();
     }
     else if (command == "READY_TO_START") {
        // 200 PHP reached
        digitalWrite(PIN_LED_RED_SYS, LOW);   
        digitalWrite(PIN_LED_ARCADE, HIGH);   
-       
-       FastLED.setBrightness(200); // Full bright
-       fill_solid(leds, NUM_LEDS, warmWhite);
-       FastLED.show();
-       
        isSessionActive = false;
+       refreshStrip();
     } 
     else if (command == "SESSION_START") {
        // Camera is running
        digitalWrite(PIN_LED_RED_SYS, LOW);   
        digitalWrite(PIN_LED_ARCADE, LOW);    
-       
-       FastLED.setBrightness(dimmedBrightness);
-       fill_solid(leds, NUM_LEDS, warmWhite);
-       FastLED.show();
-       
        isSessionActive = true;
+       refreshStrip();
     }
+     else if (command == "LED_STRIP_ON") {
+       turnStripOn();
+     }
+     else if (command == "LED_STRIP_OFF") {
+       turnStripOff();
+     }
+     else if (command == "LED_STRIP_RESTART") {
+       restartStrip();
+     }
     
     // --- GREEN LED (Printer) ---
     else if (command == "GREEN_ON") {
@@ -152,10 +175,7 @@ void serialEvent() {
     else if (command == "GREEN_OFF") {
        digitalWrite(PIN_LED_GREEN, LOW);  
        digitalWrite(PIN_LED_RED_SYS, HIGH);
-       
-       FastLED.setBrightness(200); // Restore full bright
-       fill_solid(leds, NUM_LEDS, warmWhite);
-       FastLED.show();
+       refreshStrip();
     }
     else if (command.startsWith("SET_COLOR:")) {
        int red;
@@ -167,18 +187,14 @@ void serialEvent() {
            green >= 0 && green <= 255 &&
            blue >= 0 && blue <= 255) {
           warmWhite = CRGB((uint8_t)red, (uint8_t)green, (uint8_t)blue);
-          fill_solid(leds, NUM_LEDS, warmWhite);
-          FastLED.show();
+          refreshStrip();
        }
     }
     else if (command.startsWith("SET_DIM:")) {
        int brightness = command.substring(8).toInt();
        if (brightness >= 0 && brightness <= 255) {
           dimmedBrightness = (uint8_t)brightness;
-          if (isSessionActive) {
-             FastLED.setBrightness(dimmedBrightness);
-             FastLED.show();
-          }
+         refreshStrip();
        }
     }
   }

@@ -32,7 +32,7 @@ ipcMain.handle('toggle-fullscreen', (event) => {
 async function createWindow() {
     // 1. Start your backend server silently in the background
     // Pointing to your specific path: src/js/server.js
-    const boothDataFolder = path.join(app.getPath('home'), 'Fik-70sPhotobooth');
+    const boothDataFolder = path.join(app.getPath('home'), 'Flik-70sPhotobooth');
     const serverEnv = app.isPackaged
         ? {
             ...process.env,

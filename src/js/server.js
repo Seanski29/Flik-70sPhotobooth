@@ -1,3 +1,4 @@
+// server.js
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -22,20 +23,27 @@ app.use(express.json({ limit: '50mb' }));
 const projectRoot = path.join(__dirname, '..', '..');
 const bundledArchiveFolder = path.join(__dirname, '..', 'archive');
 const bundledFramesFolder = path.join(projectRoot, 'assets', 'frames');
-const dataRoot = process.env.FLIK_DATA_DIR
+const configuredDataRoot = process.env.FLIK_DATA_DIR
     ? path.resolve(process.env.FLIK_DATA_DIR)
-    : path.join(__dirname, '..');
-const masterFolder = path.join(dataRoot, 'archive');
+    : '';
+const dataRoot = configuredDataRoot || projectRoot;
+const configuredArchiveFolder = path.join(dataRoot, 'src', 'archive');
+const configuredFramesFolder = path.join(dataRoot, 'assets', 'frames');
+const masterFolder = configuredDataRoot && fs.existsSync(configuredArchiveFolder)
+    ? configuredArchiveFolder
+    : bundledArchiveFolder;
 const legacyArchiveFolders = [
     path.join(dataRoot, 'src', 'archive'),
     path.join(dataRoot, 'assets', 'archive')
 ];
 const dataFramesFolder = path.join(dataRoot, 'frames');
 const legacyFramesFolder = path.join(dataRoot, 'assets', 'frames');
-const framesFolder = process.env.FLIK_DATA_DIR && fs.existsSync(legacyFramesFolder)
-    ? legacyFramesFolder
-    : dataFramesFolder;
-const persistentConfigFolder = process.env.FLIK_DATA_DIR ? dataRoot : __dirname;
+const framesFolder = configuredDataRoot && fs.existsSync(configuredFramesFolder)
+    ? configuredFramesFolder
+    : configuredDataRoot
+        ? dataFramesFolder
+        : bundledFramesFolder;
+const persistentConfigFolder = configuredDataRoot ? dataRoot : __dirname;
 app.use('/archive', express.static(masterFolder)); 
 legacyArchiveFolders.forEach(folder => app.use('/archive', express.static(folder)));
 app.use('/archive', express.static(bundledArchiveFolder));
@@ -308,14 +316,14 @@ function sendHardwareCommand(command) {
             if (nextGreenState) emitSoundEffect('green');
         }
     }
+}
 
-    function sendLedColor(color) {
-        sendHardwareCommand(`SET_COLOR:${color.r},${color.g},${color.b}`);
-    }
+function sendLedColor(color) {
+    sendHardwareCommand(`SET_COLOR:${color.r},${color.g},${color.b}`);
+}
 
-    function sendLedDimness(dimness) {
-        sendHardwareCommand(`SET_DIM:${dimness}`);
-    }
+function sendLedDimness(dimness) {
+    sendHardwareCommand(`SET_DIM:${dimness}`);
 }
 
 function printCollage(imagePath) {
@@ -382,7 +390,7 @@ $document.Dispose()
         }
         addLog(`> 🖨️ Print job sent to [${appConfig.targetPrinter}] using the configured Windows printer.`);
         sendHardwareCommand('GREEN_ON');
-        setTimeout(() => sendHardwareCommand('GREEN_OFF'), 10000);
+        setTimeout(() => sendHardwareCommand('GREEN_OFF'), 20000);
     });
 }
 
@@ -902,6 +910,11 @@ io.on('connection', (socket) => {
         } else {
             addLog(`ERROR: Cannot test LED. Arduino not connected.`);
         }
+    });
+
+    socket.on('test_printer_sfx', () => {
+        io.emit('play_printer_sfx');
+        addLog(`> 🔊 HARDWARE TEST: Triggered Printer SFX.`);
     });
     
     socket.on('force_start', () => {
