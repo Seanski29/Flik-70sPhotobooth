@@ -15,6 +15,9 @@
         .price-options button.active, .price-options button:hover { background: #2563eb; border-color: #60a5fa; }
         .pricing-actions { display: flex; align-items: center; gap: 12px; }
         .pricing-actions button, .modal-actions button { padding: 9px 16px; border: 0; border-radius: 5px; color: #fff; background: #2563eb; cursor: pointer; font-weight: bold; }
+        .ledger-table th:last-child, .ledger-table td:last-child { text-align: right; }
+        .clear-week-button { padding: 7px 11px; border: 1px solid #ef4444; border-radius: 5px; color: #fff; background: transparent; cursor: pointer; font-weight: bold; }
+        .clear-week-button:hover, .btn-danger:hover { background: #b91c1c; }
         .ledger-table { width: 100%; border-collapse: collapse; }
         .ledger-table th, .ledger-table td { padding: 12px; border-bottom: 1px solid #444; text-align: left; }
         .ledger-table tbody tr { cursor: pointer; }
@@ -57,7 +60,7 @@
         </section>
         <section class="ledger-card">
             <h3>Weekly Reports</h3>
-            <table class="ledger-table"><thead><tr><th>Week</th><th>Total Revenue</th></tr></thead><tbody id="weeklyReports"></tbody></table>
+            <table class="ledger-table"><thead><tr><th>Week</th><th>Total Revenue</th><th>Actions</th></tr></thead><tbody id="weeklyReports"></tbody></table>
         </section>
         <div style="text-align: right; margin-top: 22px;"><button class="btn-danger" onclick="resetRevenue()">Reset Vault (Clear All Data)</button></div>
     </main>
@@ -65,7 +68,7 @@
         <div class="report-modal-box">
             <div class="report-modal-header"><h2 id="reportTitle">Weekly Report</h2><button class="report-close" type="button" onclick="closeReport()">&times;</button></div>
             <table class="breakdown-table"><thead><tr><th>Date</th><th>Revenue</th><th>Sessions</th></tr></thead><tbody id="dailyBreakdown"></tbody></table>
-            <div class="modal-actions"><span id="weeklyTotal"></span><button type="button" onclick="exportWeeklyReport()">Export to Excel</button></div>
+            <div class="modal-actions"><span id="weeklyTotal"></span><div><button type="button" onclick="exportWeeklyReport()">Export to Excel</button><button class="btn-danger" type="button" onclick="clearSelectedWeek()">Clear This Week</button></div></div>
         </div>
     </div>
     <script src="../js/sidebar.js"></script>
@@ -88,6 +91,7 @@
         });
         socket.on('price_update', setPrice);
         socket.on('price_error', message => { document.getElementById('priceStatus').innerText = message; });
+        socket.on('revenue_error', message => alert(message));
 
         function setPrice(price) {
             priceValue.innerText = price;
@@ -134,8 +138,12 @@
                 end.setDate(end.getDate() + 6);
                 const revenue = week.days.reduce((sum, record) => sum + Number(record.revenue || 0), 0);
                 const row = document.createElement('tr');
-                row.innerHTML = `<td>${formatDate(week.start)} - ${formatDate(end)}</td><td>${revenue} PHP</td>`;
+                row.innerHTML = `<td>${formatDate(week.start)} - ${formatDate(end)}</td><td>${revenue} PHP</td><td><button class="clear-week-button" type="button">Clear</button></td>`;
                 row.addEventListener('click', () => openReport(week, end));
+                row.querySelector('.clear-week-button').addEventListener('click', event => {
+                    event.stopPropagation();
+                    clearWeek(week.start, formatDate(end));
+                });
                 body.appendChild(row);
             });
         }
@@ -163,6 +171,16 @@
 
         function closeReport() { document.getElementById('reportModal').style.display = 'none'; }
 
+        function clearWeek(weekStart, weekEnd) {
+            if (!confirm(`Permanently clear all revenue and session data for ${formatDate(weekStart)} - ${weekEnd}?`)) return;
+            socket.emit('clear_revenue_week', formatDate(weekStart));
+            closeReport();
+        }
+
+        function clearSelectedWeek() {
+            if (selectedWeek) clearWeek(selectedWeek.start, formatDate(selectedWeek.end));
+        }
+
         function exportWeeklyReport() {
             if (!selectedWeek) return;
             const rows = [['', 'Flik Photobooth'], ['', `Total Revenue: ${formatDate(selectedWeek.start)} - ${formatDate(selectedWeek.end)}`], [''], ['', 'Date', 'Revenue', 'Sessions']];
@@ -179,7 +197,7 @@
         }
 
         function resetRevenue() {
-            if (confirm('WARNING: This will permanently delete all revenue and session history. Are you sure?')) socket.emit('reset_revenue');
+            if (confirm('WARNING: This will permanently delete ALL revenue and session history from every week. Are you sure?')) socket.emit('reset_revenue');
         }
 
         document.getElementById('reportModal').addEventListener('click', event => {

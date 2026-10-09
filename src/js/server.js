@@ -209,6 +209,25 @@ function formatDate(date) {
     return `${day}/${month}/${date.getFullYear()}`;
 }
 
+function parseStoredDate(value) {
+    if (typeof value !== 'string') return null;
+    const parts = value.split('/').map(Number);
+    if (parts.length !== 3 || parts.some(part => !Number.isInteger(part))) return null;
+    const [day, month, year] = parts;
+    const date = new Date(year, month - 1, day);
+    return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day
+        ? date
+        : null;
+}
+
+function startOfWeek(date) {
+    const result = new Date(date);
+    const day = result.getDay();
+    result.setDate(result.getDate() - (day === 0 ? 6 : day - 1));
+    result.setHours(0, 0, 0, 0);
+    return result;
+}
+
 function refreshTotals() {
     totalRevenue = dailyRecords.reduce((sum, record) => sum + record.revenue, 0);
     totalSessions = dailyRecords.reduce((sum, record) => sum + record.sessions, 0);
@@ -946,6 +965,31 @@ io.on('connection', (socket) => {
         emitAuditUpdate();
         addLog(">  Vault stats permanently reset by operator.");
     });
+
+    socket.on('clear_revenue_week', (weekStartValue) => {
+        const weekStart = parseStoredDate(weekStartValue);
+        if (!weekStart || startOfWeek(weekStart).getTime() !== weekStart.getTime()) {
+            socket.emit('revenue_error', 'Unable to clear the selected week.');
+            return;
+        }
+
+        const selectedWeekStart = weekStart.getTime();
+        const recordsBefore = dailyRecords.length;
+        dailyRecords = dailyRecords.filter(record => {
+            const recordDate = parseStoredDate(record.date);
+            return !recordDate || startOfWeek(recordDate).getTime() !== selectedWeekStart;
+        });
+
+        if (dailyRecords.length === recordsBefore) {
+            socket.emit('revenue_error', 'No records found for the selected week.');
+            return;
+        }
+
+        refreshTotals();
+        saveStats();
+        emitAuditUpdate();
+        addLog(`>  Revenue records cleared for week starting ${weekStartValue}.`);
+    });
     
     socket.on('restart_system', () => {
         addLog(`>  OPERATOR COMMAND: SYSTEM REBOOTING IN 3 SECONDS...`);
@@ -1024,8 +1068,8 @@ async function createCustomCollage(photos, outputPath, framePath) {
     const photoWidth = 513;
     const photoHeight = 389;
     const slotPositions = [
-        [57, 144], [628, 144], [57, 545], [628, 545],
-        [57, 947], [628, 947], [57, 1349], [628, 1349]
+        [44, 144], [644, 144], [44, 545], [644, 545],
+        [44, 947], [644, 947], [44, 1350], [644, 1350]
     ];
     const slotPhotos = photos.length === 4
         ? [photos[0], photos[0], photos[1], photos[1], photos[2], photos[2], photos[3], photos[3]]
@@ -1044,9 +1088,9 @@ async function createCollage(photos, outputPath, filterConfig) {
         // These coordinates match the eight photo slots in the 1200x1800 frames.
         const photoWidth = 513;
         const photoHeight = 389;
-        const leftX = 57;
-        const rightX = 628;
-        const rowY = [144, 545, 947, 1349];
+        const leftX = 44;
+        const rightX = 644;
+        const rowY = [144, 545, 947, 1350];
         const resizedImages = await Promise.all(
             photos.map(async (photoPath) => {
                 await waitForFile(photoPath);
