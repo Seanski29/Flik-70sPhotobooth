@@ -1067,10 +1067,10 @@ function decodeImagePayload(payload, maxBytes = 50 * 1024 * 1024) {
 async function createCustomCollage(photos, outputPath, framePath) {
     const photoHeight = 389;
     const slotPositions = [
-        [50, 144], [639, 144], [50, 545], [639, 545],
-        [50, 947], [639, 947], [50, 1350], [639, 1350]
+        [50, 144], [638, 144], [50, 545], [638, 545],
+        [50, 947], [638, 947], [50, 1350], [638, 1350]
     ];
-    const slotWidths = [511, 513, 511, 513, 511, 513, 511, 513];
+    const slotWidths = [514, 514, 514, 514, 514, 514, 514, 514];
     const slotPhotos = photos.length === 4
         ? [photos[0], photos[0], photos[1], photos[1], photos[2], photos[2], photos[3], photos[3]]
         : photos;
@@ -1089,9 +1089,9 @@ async function createCollage(photos, outputPath, filterConfig) {
         const photoWidth = 513;
         const photoHeight = 389;
         const leftX = 50;
-        const rightX = 639;
-        const leftPhotoWidth = 511;
-        const rightPhotoWidth = 513;
+        const rightX = 638;
+        const leftPhotoWidth = 514;
+        const rightPhotoWidth = 514;
         const rowY = [144, 545, 947, 1350];
         const resizedImages = await Promise.all(
             photos.map(async (photoPath) => {

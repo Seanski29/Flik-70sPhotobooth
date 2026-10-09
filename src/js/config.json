@@ -1,7 +1,7 @@
 {
   "targetPrinter": "DS-RX1",
   "printerName": "DS-RX1",
-  "activeFrame": "Frame_basis.png",
+  "activeFrame": "LAST_FRAME_BASIS.png",
   "filters": {
     "NORMAL": {
       "name": "Normal",
