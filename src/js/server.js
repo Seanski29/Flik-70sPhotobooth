@@ -1065,17 +1065,17 @@ function decodeImagePayload(payload, maxBytes = 50 * 1024 * 1024) {
 }
 
 async function createCustomCollage(photos, outputPath, framePath) {
-    const photoWidth = 513;
     const photoHeight = 389;
     const slotPositions = [
-        [44, 144], [644, 144], [44, 545], [644, 545],
-        [44, 947], [644, 947], [44, 1350], [644, 1350]
+        [50, 144], [639, 144], [50, 545], [639, 545],
+        [50, 947], [639, 947], [50, 1350], [639, 1350]
     ];
+    const slotWidths = [511, 513, 511, 513, 511, 513, 511, 513];
     const slotPhotos = photos.length === 4
         ? [photos[0], photos[0], photos[1], photos[1], photos[2], photos[2], photos[3], photos[3]]
         : photos;
     const photoLayers = await Promise.all(slotPhotos.map(async (photo, index) => ({
-        input: await sharp(photo).resize(photoWidth, photoHeight, { fit: 'fill' }).jpeg().toBuffer(),
+        input: await sharp(photo).resize(slotWidths[index], photoHeight, { fit: 'fill' }).jpeg().toBuffer(),
         left: slotPositions[index][0],
         top: slotPositions[index][1]
     })));
@@ -1086,10 +1086,11 @@ async function createCustomCollage(photos, outputPath, framePath) {
 async function createCollage(photos, outputPath, filterConfig) {
     try {
         // These coordinates match the eight photo slots in the 1200x1800 frames.
-        const photoWidth = 513;
         const photoHeight = 389;
-        const leftX = 44;
-        const rightX = 644;
+        const leftX = 50;
+        const rightX = 639;
+        const leftPhotoWidth = 511;
+        const rightPhotoWidth = 513;
         const rowY = [144, 545, 947, 1350];
         const resizedImages = await Promise.all(
             photos.map(async (photoPath) => {
@@ -1138,10 +1139,20 @@ async function createCollage(photos, outputPath, filterConfig) {
                 .resize(1200, 1800, { fit: 'fill' }).png().toBuffer()
             : { create: { width: 1200, height: 1800, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 1 } } };
         const photoLayers = [];
-        rowY.forEach((top, index) => {
-            photoLayers.push({ input: resizedImages[index], top, left: leftX });
-            photoLayers.push({ input: resizedImages[index], top, left: rightX });
-        });
+        for (const [index, top] of rowY.entries()) {
+            photoLayers.push({
+                input: await sharp(resizedImages[index])
+                    .resize(leftPhotoWidth, photoHeight, { fit: 'fill' }).jpeg().toBuffer(),
+                top,
+                left: leftX
+            });
+            photoLayers.push({
+                input: await sharp(resizedImages[index])
+                    .resize(rightPhotoWidth, photoHeight, { fit: 'fill' }).jpeg().toBuffer(),
+                top,
+                left: rightX
+            });
+        }
         await sharp(backgroundInput).composite(photoLayers).jpeg({ quality: 90 }).toFile(outputPath);
 
         photos.forEach(photoPath => { 
