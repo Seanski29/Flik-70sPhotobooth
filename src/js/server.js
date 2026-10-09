@@ -1086,6 +1086,7 @@ async function createCustomCollage(photos, outputPath, framePath) {
 async function createCollage(photos, outputPath, filterConfig) {
     try {
         // These coordinates match the eight photo slots in the 1200x1800 frames.
+        const photoWidth = 513;
         const photoHeight = 389;
         const leftX = 50;
         const rightX = 639;
